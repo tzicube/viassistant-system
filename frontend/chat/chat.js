@@ -1,12 +1,12 @@
 /* ================= CONFIG ================= */
 // true  = chạy mock (không cần backend)
 // false = chạy backend + websocket
-const USE_MOCK = true;
+const USE_MOCK = false;
 
-const API_URL = "http://localhost:8000/api/chat";
-const WS_URL  = "ws://localhost:8000/ws/chat";
+const API_URL = "http://127.0.0.1:8000/api/chat";
+//const WS_URL  = "ws://localhost:8000/ws/chat";
 const UPLOAD_URL = "http://localhost:8000/api/upload-image";
-const SESSION_ID = "demo-user";
+//const SESSION_ID = "demo-user";
 
 /* ================= MOCK API ================= */
 function mockChatAPI(message) {
@@ -20,7 +20,7 @@ function mockChatAPI(message) {
 }
 
 /* ================= WEBSOCKET ================= */
-let socket = null;
+/*let socket = null;
 
 function connectWS() {
   socket = new WebSocket(WS_URL);
@@ -46,7 +46,7 @@ if (!USE_MOCK) {
   connectWS();
 }
 
-/* ================= WS AUTO CALL (1s) ================= */
+ ================= WS AUTO CALL (1s) ================= 
 let wsInterval = null;
 
 function startWSAutoCall() {
@@ -68,49 +68,48 @@ function stopWSAutoCall() {
   clearInterval(wsInterval);
   wsInterval = null;
 }
-
+*/
 /* ================= SEND MESSAGE ================= */
 async function sendMessage() {
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text) return;
 
+  // hiển thị user trước
   addMessage(text, "user");
   input.value = "";
 
-  // 🧠 MOCK MODE
-  if (USE_MOCK) {
-    const data = await mockChatAPI(text);
-    addMessage(data.reply, "bot");
-    return;
-  }
-
-  // 🌐 WEBSOCKET MODE
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(text);
-    return;
-  }
-
-  // 🌐 FALLBACK HTTP API
   try {
     const res = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        message: text,
-        session_id: SESSION_ID
+        conversation_id: 1,
+        role: "user",
+        message: text
       })
     });
 
-    if (!res.ok) throw new Error("Server error");
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`);
+    }
 
     const data = await res.json();
-    addMessage(data.reply, "bot");
+
+    // backend trả đúng spec
+    const aiMsg = data.message;
+
+    addMessage(aiMsg.content, aiMsg.role); // role = "assistant"
 
   } catch (err) {
-    addMessage("⚠️ Server not responding", "bot");
+    console.error(err);
+    addMessage("⚠️ Server not responding", "assistant");
   }
 }
+
 
 /* ================= MESSAGE UI ================= */
 function addMessage(text, type) {
