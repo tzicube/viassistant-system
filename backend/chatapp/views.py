@@ -6,9 +6,11 @@ from .models import Conversation, Message
 from django.db import transaction
 import requests
 from django.conf import settings
+from .wiki import should_use_wikipedia, fetch_wikipedia_summary
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-OLLAMA_MODEL = "qwen2.5-coder:14b"
+OLLAMA_MODEL = "gemma2:27b" 
+#qwen2.5-coder:14b
 
 # ✅ reuse HTTP connection (keep-alive)
 _http = requests.Session()
@@ -59,14 +61,28 @@ def call_ai(user_text: str) -> str:
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_text},
     ]
+
+    # ✅ CHỈ THÊM ĐOẠN NÀY
+    if should_use_wikipedia(user_text):
+        wiki = fetch_wikipedia_summary(user_text)
+        if wiki:
+            wiki_block = (
+                "Wikipedia summary (external knowledge):\n"
+                f"Title: {wiki['title']}\n"
+                f"Summary: {wiki['extract']}\n"
+                f"Source: {wiki.get('url') or 'N/A'}"
+            )
+            messages.append({"role": "system", "content": wiki_block})
+    # ✅ HẾT PHẦN THÊM
+
+    messages.append({"role": "user", "content": user_text})
 
     r = _http.post(
         OLLAMA_URL,
         json={
             "model": OLLAMA_MODEL,
-            "messages": messages, 
+            "messages": messages,
             "stream": False
         },
         timeout=(3, 120)
@@ -74,4 +90,5 @@ def call_ai(user_text: str) -> str:
     r.raise_for_status()
     data = r.json()
     return (data.get("message", {}) or {}).get("content", "").strip() or "No response."
+
 
