@@ -1,0 +1,337 @@
+/* ================= RESET ================= */
+* {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  overflow: hidden; /* ❗ body KHÔNG scroll */
+}
+
+/* ================= APP ================= */
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+/* ================= TOPBAR ================= */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  height: 50px;
+  background: #000;
+  border-bottom: 1px solid #222;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+
+  transition: left 0.3s ease;
+  z-index: 2000;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: none;
+  background: #1f1f1f;
+  color: #fff;
+  cursor: pointer;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  background: #111;
+  color: #fff;
+  overflow: hidden;
+
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 1500;
+}
+.sidebar-top {
+  display: flex;
+  align-items: center;       /* 🔑 cùng trục */
+  gap: 14px;
+
+  height: 52px;              /* 🔑 khóa chiều cao */
+  padding: 0 14px;
+}
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+   min-width: 0; 
+
+  border: 1px solid #333;
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+
+.search-box input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  outline: none;
+}
+
+.new-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.app.sidebar-open .sidebar {
+  transform: translateX(0);
+}
+/* Khi sidebar mở, đẩy topbar sang phải */
+.app.sidebar-open .topbar {
+  left: 280px;   /* đúng bằng width sidebar */
+}
+.sidebar-title {
+  margin: 14px 0 18px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  overflow-x: hidden;
+}
+.brand-inline {
+  display: flex;
+  align-items: center;   /* 🔑 cùng baseline */
+  gap: 8px;
+
+  height: 36px;          /* 🔑 bằng search */
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+
+.new-project {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.new-project:hover {
+  background: #111;
+}
+
+.history-title {
+  margin-top: 24px;
+  margin-bottom: 8px;
+  font-size: 22px;
+  font-weight: 600;
+}
+.history li {
+  list-style: none;
+  padding: 8px 6px;
+  font-size: 15px;
+  color: #ddd;
+  cursor: pointer;
+}
+
+.history li:hover {
+  color: #fff;
+}
+
+
+/* ================= MAIN ================= */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 0;
+  transition: margin-left 0.3s ease;
+
+  /* ❌ KHÔNG ĐƯỢC ĐẨY MAIN */
+  transform: none !important;
+}
+.app.sidebar-open .main {
+  margin-left: 280px;
+}
+/* ================= CHAT ================= */
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+
+  /* trừ topbar */
+  padding-top: 50px;
+  min-height: 0;
+}
+
+/* ================= MESSAGES ================= */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+
+  padding: 24px;
+}
+
+/* KHUNG CHAT LUÔN Ở GIỮA */
+.chat-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ================= BUBBLES ================= */
+.bot,
+.user {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+/* BOT — KHÔNG BUBBLE */
+.bot {
+  background: none;
+  padding: 0;
+  max-width: 100%;
+  color: #e5e5e5;
+  align-self: flex-start;
+}
+
+/* USER — VIỀN NHẸ */
+.user {
+  background: transparent;
+  color: #fff;
+
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+
+  padding: 10px 18px;
+  font-size: 15px;
+
+  max-width: 75%;
+  width: fit-content;
+
+  align-self: flex-end;
+  margin-left: auto;
+
+  animation: userIn 0.2s ease-out;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.user:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes userIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ================= INPUT ================= */
+.input-wrapper {
+  position: sticky;
+  bottom: 0;
+  background: #000;
+  z-index: 1800;
+
+  display: flex;
+  justify-content: center;
+  padding: 12px 24px;
+
+  border-top: 1px solid #222;
+}
+
+.input-box {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-box input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  outline: none;
+}
+
+/* ================= BUTTONS ================= */
+.upload-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #2c2c2c;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.upload-btn:hover {
+  background: #3a3a3a;
+}
+
+.send-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  border: none;
+  background: #1f1f1f;
+  color: #fff;
+  cursor: pointer;
+}
+
+.send-btn:hover {
+  background: #2c2c2c;
+}

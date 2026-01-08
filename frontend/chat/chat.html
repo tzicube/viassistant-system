@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ViChat - Marthome</title>
+  <link rel="stylesheet" href="chat.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+ <!-- HEADER -->
+<aside class="sidebar">
+
+  <div class="sidebar-top">
+
+    <div class="search-box">
+      <span class="icon">🔍</span>
+      <input type="text" placeholder="Search" />
+    </div>
+
+    <button class="new-btn">✏️</button>
+
+    
+
+  </div>
+
+  <div class="sidebar-body">
+     <div class="sidebar-title">ViChat</div>
+    <div class="new-project">
+      <span>📁</span>
+      <span>New project</span>
+    </div>
+
+    <div class="history-title">History</div>
+    <ul class="history"></ul>
+  </div>
+
+</aside>
+
+ <!-- MAIN (HEADER + CHAT) -->
+  <div class="main">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="menuBtn" class="menu-btn">☰</button>
+        <span class="logo">ViChat</span>
+      </div>
+
+      <div class="topbar-right">
+        <span>👤</span>
+        <span>💬</span>
+      </div>
+    </header>
+    
+<main class="chat">
+  <div class="messages" id="messages">
+    <!-- 👇 TẤT CẢ TIN NHẮN PHẢI VÀO ĐÂY -->
+    <div class="chat-container">
+      <div class="bot">
+        Hi 👋 I’m your Marthome assistant. How can I help you?
+      </div>
+    </div>
+  </div>
+
+  <div class="input-wrapper">
+    <div class="input-box">
+      <button id="uploadBtn" class="upload-btn">+</button>
+      <input
+        type="text"
+        id="input"
+        placeholder="Ask Anything"
+      />
+      <button id="sendBtn" class="send-btn">Send</button>
+    </div>
+  </div>
+
+
+<input
+  type="file"
+  id="imageInput"
+  accept="image/*"
+  hidden
+/> 
+    </div>
+  </main>
+
+</div>
+
+<script src="chat.js"></script>
+</body>
+</html>
