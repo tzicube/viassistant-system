@@ -16,22 +16,36 @@
   <div class="sidebar-top">
 
     <div class="search-box">
-      <span class="icon">🔍</span>
       <input type="text" placeholder="Search" />
     </div>
-
-    <button class="new-btn">✏️</button>
-
-    
-
   </div>
 
   <div class="sidebar-body">
      <div class="sidebar-title">ViChat</div>
-    <div class="new-project">
-      <span>📁</span>
-      <span>New project</span>
-    </div>
+      <button id="newChatBtn" class="new-project-btn">
+       <svg
+        class="newchat-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <!-- bong bóng chat -->
+        <path d="M4 5h16v11H9l-5 4V5z"/>
+
+        <!-- dấu + ở giữa -->
+        <path d="M12 8v6"/>
+        <path d="M9 11h6"/>
+      </svg>
+
+
+
+        <span>New Chat</span>
+      </button>
+
+
 
     <div class="history-title">History</div>
     <ul class="history"></ul>
@@ -49,18 +63,45 @@
       </div>
 
       <div class="topbar-right">
-        <span>👤</span>
-        <span>💬</span>
+        <button id="holdChatBtn" class="hold-chat-btn" title="Hold chat">
+    
+    <!-- USER ICON (solid) -->
+          <svg
+            class="icon-user"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+          </svg>
+
+    <!-- CHAT ICON (outline + dots) -->
+          <svg
+            class="icon-chat"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 4h16v11H8l-4 4V4z" />
+            <circle cx="9" cy="9" r="1.2" fill="currentColor" />
+            <circle cx="12" cy="9" r="1.2" fill="currentColor" />
+            <circle cx="15" cy="9" r="1.2" fill="currentColor" />
+          </svg>
+
+        </button>
       </div>
+
     </header>
     
 <main class="chat">
   <div class="messages" id="messages">
     <!-- 👇 TẤT CẢ TIN NHẮN PHẢI VÀO ĐÂY -->
     <div class="chat-container">
-      <div class="bot">
-        Hi 👋 I’m your Marthome assistant. How can I help you?
-      </div>
     </div>
   </div>
 

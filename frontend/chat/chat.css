@@ -47,16 +47,28 @@ html, body {
 .menu-btn {
   width: 36px;
   height: 36px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: none;
-  background: #1f1f1f;
+  background: transparent;
   color: #fff;
   cursor: pointer;
+  font-size: 23px; 
+}
+
+.menu-btn:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.menu-btn:active {
+  background: rgba(160,120,255,.18);
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
 }
 
 .logo {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+
 }
 
 /* ================= SIDEBAR ================= */
@@ -80,21 +92,35 @@ html, body {
   display: flex;
   align-items: center;       /* 🔑 cùng trục */
   gap: 14px;
-
-  height: 52px;              /* 🔑 khóa chiều cao */
-  padding: 0 14px;
+  min-width: 0;
+  height: 40px;              /* 🔑 khóa chiều cao */
+  padding: 0 16px;
+  margin-top: 12px;
 }
 .search-box {
   flex: 1;
+  height: 35px;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
-   min-width: 0; 
+  gap: 10px;
 
-  border: 1px solid #333;
+  padding: 0 12px;
+
+  border: 1.5px solid rgba(255,255,255,0.35);
   border-radius: 999px;
-  padding: 6px 12px;
+
+  background: rgba(255,255,255,0.02);
+}
+
+.search-icon {
+  width: 29px;
+  height: 29px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1;
+  color: #e5e5e5;
+  flex-shrink: 0;
 }
 
 .search-box input {
@@ -102,37 +128,48 @@ html, body {
   background: transparent;
   border: none;
   color: #fff;
+  font-size: 16px;
   outline: none;
 }
 
 .new-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid #333;
-  background: transparent;
-  color: #fff;
-  cursor: pointer;
-}
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
 
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,0.35);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #e5e5e5;
+}
+.new-btn:hover {
+  color: #fff;
+}
 .app.sidebar-open .sidebar {
   transform: translateX(0);
 }
+
 /* Khi sidebar mở, đẩy topbar sang phải */
 .app.sidebar-open .topbar {
   left: 280px;   /* đúng bằng width sidebar */
 }
 .sidebar-title {
   margin: 14px 0 18px;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin: 10px 0 12px;
+  margin-left: 0;
 }
 
 .sidebar-body {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 24px 20px;
   overflow-x: hidden;
 }
 .brand-inline {
@@ -146,28 +183,71 @@ html, body {
   white-space: nowrap;
 }
 
+.icon-edit {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+.search-box:hover,
+.new-btn:hover {
+  border-color: #fff;
+}
+
+.search-box:focus-within {
+  border-color: #a78bfa;
+}
+
+.new-btn:hover {
+  color: #fff;
+}
+
 
 .new-project-btn{
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
   background: transparent;
   border: none;
   color: #fff;
-  font-size: 16px;
-  padding: 10px;
-  text-align: left;
+  font-size: 18px;
+  padding: 10px 0px;
+  border-radius: 10px;
+  margin-left: 0;
+
   cursor: pointer;
-  border-radius: 8px;
 }
 
 .new-project-btn:hover {
   background: rgba(255,255,255,0.08);
 }
 
+.new-project-btn:active {
+ 
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.6);
+  
+}
+
+.newchat-icon {
+  width: 26px;
+  height: 26px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .history-title {
-  margin-top: 24px;
+  margin-top: 16px;
   margin-bottom: 8px;
   font-size: 22px;
   font-weight: 600;
+  margin-left: 0;
 }
 .history li {
   list-style: none;
@@ -180,6 +260,29 @@ html, body {
 .history li:hover {
   color: #fff;
 }
+
+/* ===== HOLD CHAT BUTTON ===== */
+.hold-chat-btn {
+  border-radius: 19px;
+  background: transparent;
+  color: #fff;
+  border: none;
+}
+
+.hold-chat-btn svg {
+  width: 35px;
+  height: 35px;
+}
+
+.hold-chat-btn:hover {
+  background: rgba(255,255,255,.06);
+}
+
+.hold-chat-btn:active {
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
+  
+}
+
 
 
 /* ================= MAIN ================= */
@@ -235,7 +338,7 @@ html, body {
 }
 
 /* BOT — KHÔNG BUBBLE */
-.assistant {
+.bot {
   background: none;
   padding: 0;
   max-width: 100%;
@@ -338,11 +441,25 @@ html, body {
 .send-btn:hover {
   background: #2c2c2c;
 }
-.assistant {
-  background: #1f2933;
-  color: #fff;
-  align-self: flex-start;
-  border-radius: 12px;
-  padding: 10px 14px;
-  max-width: 70%;
+
+.typing {
+  display: flex;
+  gap: 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #e5e5e5;
 }
+
+.typing span {
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing span:nth-child(1) { animation-delay: 0s; }
+.typing span:nth-child(2) { animation-delay: .2s; }
+.typing span:nth-child(3) { animation-delay: .4s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: .3; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+

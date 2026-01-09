@@ -101,7 +101,7 @@ document.getElementById("imageInput").addEventListener("change", async (e) => {
   }
 });
 */
-/* ================= SIDEBAR =================  Thái sửa lại đoạn này code cho a */
+/* ================= SIDEBAR =================  Thái sửa lại đoạn này code cho a  đây là phần lịch sử đó */
 const menuBtn = document.getElementById("menuBtn");
 const app = document.querySelector(".app");
 

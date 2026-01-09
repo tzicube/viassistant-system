@@ -6,11 +6,12 @@ from .models import Conversation, Message
 from django.db import transaction
 import requests
 from django.conf import settings
-from .wiki import should_use_wikipedia, fetch_wikipedia_summary
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 OLLAMA_MODEL = "gemma2:27b" 
 #qwen2.5-coder:14b
+#llama3.2-vision
+#ollama run gemma2:27b
 
 # ✅ reuse HTTP connection (keep-alive)
 _http = requests.Session()
@@ -20,10 +21,8 @@ def chat(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
-    t0 = time.time()
     data = json.loads(request.body or "{}")
-    t1 = time.time()
-
+    
     conversation_id = data.get("conversation_id")
     user_text = (data.get("message") or "").strip()
 
@@ -33,20 +32,17 @@ def chat(request):
         return JsonResponse({"error": "message is required"}, status=400)
 
     # (1) DB: get/create + save user msg
-    t2 = time.time()
+  
     conv, _ = Conversation.objects.get_or_create(id=conversation_id)
     Message.objects.create(conversation=conv, role="user", content=user_text)
-    t3 = time.time()
+ 
 
     # (2) AI
     assistant_text = call_ai(user_text)
-    t4 = time.time()
+
 
     # (3) DB: save assistant msg
     Message.objects.create(conversation=conv, role="assistant", content=assistant_text)
-    t5 = time.time()
-
-    
 
     return JsonResponse({
         "message": {
@@ -60,22 +56,8 @@ def call_ai(user_text: str) -> str:
     system_prompt = getattr(settings, "AI_SYSTEM_PROMPT", "You are a helpful assistant.")
 
     messages = [
-        {"role": "system", "content": system_prompt},
+        {"role": "assistant", "content": system_prompt},
     ]
-
-    # ✅ CHỈ THÊM ĐOẠN NÀY
-    if should_use_wikipedia(user_text):
-        wiki = fetch_wikipedia_summary(user_text)
-        if wiki:
-            wiki_block = (
-                "Wikipedia summary (external knowledge):\n"
-                f"Title: {wiki['title']}\n"
-                f"Summary: {wiki['extract']}\n"
-                f"Source: {wiki.get('url') or 'N/A'}"
-            )
-            messages.append({"role": "system", "content": wiki_block})
-    # ✅ HẾT PHẦN THÊM
-
     messages.append({"role": "user", "content": user_text})
 
     r = _http.post(
