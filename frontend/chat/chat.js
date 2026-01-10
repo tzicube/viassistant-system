@@ -6,12 +6,97 @@ const DELETE_API_BASE = "http://127.0.0.1:8000/api/delete_conversations";
 
 let currentConversationId = null;
 
+
+/* ================= RANDOM WELLCOMEMASSAGE ================= */
+const welcomeMessages = [
+  {
+    title: "Hello !",
+    subtitle: "What would you like to do today ?"
+  },
+  {
+    title: "Welcome to ViChat !",
+    subtitle: "Where should we start?"
+  },
+  {
+    title: "Ready when you are !",
+    subtitle: "Ask me anything."
+  },
+  {
+    title: "Is there anything we can help you with ?",
+    subtitle: "We are here to assist you."
+  }
+]; 
+
+window.addEventListener("DOMContentLoaded", () => {
+  const welcome = document.getElementById("welcomeScreen");
+  welcome.style.display = "none";
+  requestAnimationFrame(() => {
+    welcome.style.display = "flex";
+    showRandomWelcome();
+  });
+});
+
+/* ================= HIEU UNG RANDOM WELLCOMEMASSAGE ================= */
+let typingTimers = new WeakMap();
+
+function typeText(el, text, speed = 35) {
+  // nếu element này đang gõ → dừng nó
+  if (typingTimers.has(el)) {
+    clearInterval(typingTimers.get(el));
+  }
+
+  el.innerHTML = "";
+  let i = 0;
+
+  const timer = setInterval(() => {
+    let char = text[i];
+    if (char === " ") char = "&nbsp;";
+    el.innerHTML += char;
+    i++;
+
+    if (i >= text.length) {
+      clearInterval(timer);
+      typingTimers.delete(el);
+    }
+  }, speed);
+
+  typingTimers.set(el, timer);
+}
+
+
+
+function showRandomWelcome() {
+  const pick = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+
+  const welcome = document.getElementById("welcomeScreen");
+  const titleEl = document.getElementById("welcomeTitle");
+  const subEl = document.getElementById("welcomeSubtitle");
+
+  // reset
+  welcome.classList.remove("show");
+  subEl.style.opacity = 0;
+
+  // trigger animation
+  requestAnimationFrame(() => {
+    welcome.classList.add("show");
+    typeText(titleEl, pick.title);
+    setTimeout(() => {
+      typeText(subEl, pick.subtitle, 20);
+      subEl.style.opacity = 1;
+    }, 400);
+  });
+}
+
+
 /* ================= SEND MESSAGE ================= */
 
 async function sendMessage() {
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text) return;
+  
+   //  hide welcome khi bắt đầu chat
+  document.getElementById("welcomeScreen").style.display = "none";
 
   // 1) UI: hiển thị user trước (giống hệt code cũ)
   addMessage(text, "user");
@@ -118,6 +203,13 @@ newChatBtn.addEventListener("click", () => {
   // xoá UI chat
   const container = document.querySelector(".chat-container");
   container.innerHTML = "";
+
+  // bật welcome screen
+  const welcome = document.getElementById("welcomeScreen");
+  welcome.style.display = "flex";
+
+  // random lại câu chào
+  showRandomWelcome();
 
   // focus input
   const input = document.getElementById("input");
@@ -232,6 +324,9 @@ loadHistory();
 /* ================= LOAD CONVERSATION DETAIL ================= */
 async function loadConversationDetail(conversationId) {
   try {
+     //  hide welcome khi mở chat cũ
+    document.getElementById("welcomeScreen").style.display = "none";
+
     const res = await fetch(`${DETAIL_API_BASE}/${conversationId}`);
     if (!res.ok) {
       const errText = await res.text();
