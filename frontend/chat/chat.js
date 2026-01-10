@@ -16,7 +16,7 @@ async function sendMessage() {
   // 1) UI: hiển thị user trước (giống hệt code cũ)
   addMessage(text, "user");
   input.value = "";
-
+  showTyping();
   try {
     // 2) Nếu là New Chat (chưa có id) -> tạo hội thoại mới trước
     if (currentConversationId === null) {
@@ -92,7 +92,21 @@ document.getElementById("sendBtn").addEventListener("click", sendMessage); // N�
 document.getElementById("input").addEventListener("keydown", (e) => {     //  Tương tự nhưng là ấn nút enter
   if (e.key === "Enter") sendMessage();
 });
+function showTyping() {
+  const container = document.querySelector(".chat-container");
 
+  const div = document.createElement("div");
+  div.className = "bot typing";
+  div.id = "typing-indicator";
+  div.innerHTML = `
+    <span>.</span>
+    <span>.</span>
+    <span>.</span>
+  `;
+
+  container.appendChild(div);
+  container.parentElement.scrollTop = container.parentElement.scrollHeight;
+}
 
 /* ================= NEW CHAT ================= */
 const newChatBtn = document.getElementById("newChatBtn");
@@ -211,7 +225,7 @@ async function loadHistory() {
 
 // gọi ngay khi load trang
 loadHistory();
-console.log("render history id:", c.conversation_id, c.title);
+
 
 
 
