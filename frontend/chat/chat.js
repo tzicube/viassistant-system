@@ -1,42 +1,68 @@
 const API_URL = "http://127.0.0.1:8000/api/chat";
-//const UPLOAD_URL = "http://localhost:8000/api/upload-image";
+const LIST_API = "http://127.0.0.1:8000/api/conversations";
+const DETAIL_API_BASE = "http://127.0.0.1:8000/api/conversations";
+const CREATE_API = "http://127.0.0.1:8000/api/creatnew";
+const DELETE_API_BASE = "http://127.0.0.1:8000/api/delete_conversations";
+
+let currentConversationId = null;
 
 /* ================= SEND MESSAGE ================= */
+
 async function sendMessage() {
-  const input = document.getElementById("input");  // lấy text 
-  const text = input.value.trim();        // kiểm tra xem có phải là rỗng không 
+  const input = document.getElementById("input");
+  const text = input.value.trim();
   if (!text) return;
 
-  // hiển thị user trước
-  addMessage(text, "user"); // đưa vàod dể hiển thị tin nhắn
-  input.value = ""; // xoá input cũ
+  // 1) UI: hiển thị user trước (giống hệt code cũ)
+  addMessage(text, "user");
+  input.value = "";
 
   try {
+    // 2) Nếu là New Chat (chưa có id) -> tạo hội thoại mới trước
+    if (currentConversationId === null) {
+      const createRes = await fetch(CREATE_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+      });
+
+      if (!createRes.ok) {
+        const errText = await createRes.text();
+        throw new Error(`HTTP ${createRes.status}: ${errText}`);
+      }
+
+      const created = await createRes.json(); // { conversation_id, title }
+      currentConversationId = created.conversation_id;
+
+      // cập nhật history (không chặn luồng chat)
+      loadHistory().catch(console.error);
+    }
+
+    // 3) Chat bình thường (giống code cũ, chỉ thay id)
     const res = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        conversation_id: 1, // đoạn này phải xử lý lại để mỗi lần bật app thì cuộc trò truyện là 1-> n // phần này làm sau khi tạo xong phần newchat
-        role: "user", // role chắc chắn là user
+        conversation_id: currentConversationId,
+        role: "user",
         message: text
       })
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`HTTP ${res.status}: ${errText}`); // check code status nếu từ 200->209 coi là có lỗi nhảy về catch
+      throw new Error(`HTTP ${res.status}: ${errText}`);
     }
 
-    // backend trả về  content
     const data = await res.json();
-    const aiMsg = data.message;// role = "assistant"
-    addMessage(aiMsg.content, aiMsg.role); // đưa content cho hiển thị
+    const aiMsg = data.message;
 
-  } catch (err) {// nếu lỗi thì return 
+    // 4) UI: hiển thị bot (giống hệt code cũ)
+    addMessage(aiMsg.content, aiMsg.role);
+
+  } catch (err) {
     console.error(err);
-    addMessage("⚠️ Server not responding", "assistant"); 
+    addMessage("⚠️ Server not responding", "assistant");
   }
 }
 
@@ -52,55 +78,7 @@ function addMessage(text, type) {
   container.appendChild(div);  //Gắn message mới vào cuối danh sách
   container.parentElement.scrollTop = container.parentElement.scrollHeight; // tự động kéo màn hình xuống tin nhắn mới nhất
 }
-/* 
-function addImageMessage(src, type) {
-  const container = document.querySelector(".chat-container");
 
-  const div = document.createElement("div");
-  div.className = type;
-
-  const img = document.createElement("img");
-  img.src = src;
-  img.className = "chat-image";
-
-  div.appendChild(img);
-  container.appendChild(div);
-
-  container.parentElement.scrollTop = container.parentElement.scrollHeight;
-}
-
- ================= IMAGE UPLOAD ================= Chưa  dùng không động vào 
-document.getElementById("uploadBtn").onclick = () => {
-  document.getElementById("imageInput").click();
-};
-
-document.getElementById("imageInput").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  // Preview user image
-  addImageMessage(URL.createObjectURL(file), "user");
-
-  const formData = new FormData();
-  formData.append("image", file);
-  formData.append("session_id", SESSION_ID);
-
-  try {
-    const res = await fetch(UPLOAD_URL, {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-
-    if (data.reply) addMessage(data.reply, "bot");
-    if (data.image_url) addImageMessage(data.image_url, "bot");
-
-  } catch (err) {
-    addMessage("⚠️ Image upload failed", "bot");
-  }
-});
-*/
 /* ================= SIDEBAR =================  Thái sửa lại đoạn này code cho a  đây là phần lịch sử đó */
 const menuBtn = document.getElementById("menuBtn");
 const app = document.querySelector(".app");
@@ -114,3 +92,186 @@ document.getElementById("sendBtn").addEventListener("click", sendMessage); // N�
 document.getElementById("input").addEventListener("keydown", (e) => {     //  Tương tự nhưng là ấn nút enter
   if (e.key === "Enter") sendMessage();
 });
+
+
+/* ================= NEW CHAT ================= */
+const newChatBtn = document.getElementById("newChatBtn");
+
+newChatBtn.addEventListener("click", () => {
+  // reset trạng thái
+  currentConversationId = null;
+
+  // xoá UI chat
+  const container = document.querySelector(".chat-container");
+  container.innerHTML = "";
+
+  // focus input
+  const input = document.getElementById("input");
+  input.value = "";
+  input.focus();
+
+  // (tuỳ chọn) bỏ active history
+  document
+    .querySelectorAll(".history li.active")
+    .forEach(li => li.classList.remove("active"));
+});
+
+
+
+/* ================= HISTORY LIST ================= */
+const historyUl = document.querySelector(".history");
+
+async function loadHistory() {
+  try {
+    const res = await fetch(LIST_API);
+    if (!res.ok) throw new Error("Cannot load history");
+
+    const data = await res.json();
+    const conversations = data.conversations || [];
+
+    historyUl.innerHTML = "";
+
+    conversations.forEach((c) => {
+      const li = document.createElement("li");
+      li.dataset.conversationId = c.conversation_id;
+
+      // title
+      const titleSpan = document.createElement("span");
+      titleSpan.textContent = c.title || `Conversation ${c.conversation_id}`;
+      titleSpan.className = "history-title-text";
+
+      // delete button
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "✕";
+      delBtn.className = "history-del-btn";
+
+      // click load conversation
+      titleSpan.addEventListener("click", () => {
+        loadConversationDetail(c.conversation_id);
+
+        document
+          .querySelectorAll(".history li.active")
+          .forEach(x => x.classList.remove("active"));
+
+        li.classList.add("active");
+      });
+
+      // click delete
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+
+        const ok = confirm("Delete this conversation?");
+        if (!ok) return;
+
+        try {
+          const res = await fetch(
+            `${DELETE_API_BASE}/${c.conversation_id}/`,
+            { method: "DELETE" }
+          );
+
+          if (!res.ok) {
+            console.error("Delete HTTP error", res.status);
+            alert("Delete failed");
+            return;
+          }
+
+          const result = await res.json();
+          if (!result.success) {
+            alert("Delete failed");
+            return;
+          }
+
+          // ✅ xoá khỏi UI ngay
+          li.remove();
+
+          // nếu đang mở đúng chat bị xoá
+          if (currentConversationId === c.conversation_id) {
+            currentConversationId = null;
+            document.querySelector(".chat-container").innerHTML = "";
+          }
+
+        } catch (err) {
+          console.error(err);
+          alert("Delete failed");
+        }
+      });
+
+      li.appendChild(titleSpan);
+      li.appendChild(delBtn);
+      historyUl.appendChild(li);
+    });
+
+  } catch (err) {
+    console.error(err);
+    historyUl.innerHTML = `<li>Cannot load history</li>`;
+  }
+}
+
+
+
+// gọi ngay khi load trang
+loadHistory();
+
+
+
+/* ================= LOAD CONVERSATION DETAIL ================= */
+async function loadConversationDetail(conversationId) {
+  try {
+    const res = await fetch(`${DETAIL_API_BASE}/${conversationId}`);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    const messages = data.messages || [];
+
+    // set trạng thái hiện tại
+    currentConversationId = data.conversation_id;
+
+    // clear UI chat
+    const container = document.querySelector(".chat-container");
+    container.innerHTML = "";
+
+    // render messages
+    messages.forEach(m => {
+      addMessage(m.content, m.role);
+    });
+
+  } catch (err) {
+    console.error("Load conversation detail failed:", err);
+  }
+}
+
+
+
+async function deleteConversation(conversationId) {
+  try {
+    const res = await fetch(`${DELETE_API_BASE}/${conversationId}/`, {
+      method: "DELETE"
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json(); // { success: true }
+    if (!data.success) throw new Error("Delete failed");
+
+    // Nếu đang mở đúng chat bị xoá → reset UI
+    if (String(currentConversationId) === String(conversationId)) {
+      currentConversationId = null;
+      document.querySelector(".chat-container").innerHTML = "";
+      document.getElementById("input").value = "";
+    }
+
+    // Reload history
+    await loadHistory();
+
+  } catch (err) {
+    console.error("Delete conversation failed:", err);
+    alert("Delete failed");
+  }
+}
+
