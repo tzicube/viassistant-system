@@ -94,6 +94,9 @@ async function sendMessage() {
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text) return;
+  
+   //  hide welcome khi bắt đầu chat
+  document.getElementById("welcomeScreen").style.display = "none";
 
   document.getElementById("welcomeScreen").style.display = "none";
 
