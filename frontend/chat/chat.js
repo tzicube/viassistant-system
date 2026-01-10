@@ -94,16 +94,15 @@ async function sendMessage() {
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text) return;
-  
-   //  hide welcome khi bắt đầu chat
+
   document.getElementById("welcomeScreen").style.display = "none";
 
-  // 1) UI: hiển thị user trước (giống hệt code cũ)
   addMessage(text, "user");
   input.value = "";
   showTyping();
+
   try {
-    // 2) Nếu là New Chat (chưa có id) -> tạo hội thoại mới trước
+    // ===== NEW CHAT: create conversation + use returned assistant message =====
     if (currentConversationId === null) {
       const createRes = await fetch(CREATE_API, {
         method: "POST",
@@ -116,14 +115,24 @@ async function sendMessage() {
         throw new Error(`HTTP ${createRes.status}: ${errText}`);
       }
 
-      const created = await createRes.json(); // { conversation_id, title }
+      const created = await createRes.json(); // { conversation_id, title, message: {...} }
       currentConversationId = created.conversation_id;
 
-      // cập nhật history (không chặn luồng chat)
+      // update history sidebar
       loadHistory().catch(console.error);
+
+      // show assistant response returned from create API
+      hideTyping();
+      if (created.message && created.message.content) {
+        addMessage(created.message.content, created.message.role || "assistant");
+      } else {
+        addMessage("No response.", "assistant");
+      }
+
+      return; // ✅ IMPORTANT: stop here, do NOT call /api/chat again
     }
 
-    // 3) Chat bình thường (giống code cũ, chỉ thay id)
+    // ===== NORMAL CHAT (existing conversation) =====
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -141,8 +150,8 @@ async function sendMessage() {
 
     const data = await res.json();
     const aiMsg = data.message;
+
     hideTyping();
-    // 4) UI: hiển thị bot (giống hệt code cũ)
     addMessage(aiMsg.content, aiMsg.role);
 
   } catch (err) {
@@ -151,6 +160,7 @@ async function sendMessage() {
     addMessage("⚠️ Server not responding", "assistant");
   }
 }
+
 
 
 /* ================= MESSAGE UI ================= Hàm này dùng để hiển thị tin nhắn  */

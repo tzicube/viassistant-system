@@ -29,3 +29,11 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.conversation_id}:{self.role}:{self.id}"
+    
+class AppMemory(models.Model):
+    key = models.CharField(max_length=100, unique=True, db_index=True)
+    value = models.TextField(blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.key}"

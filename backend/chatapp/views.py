@@ -1,11 +1,12 @@
 import time
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse , StreamingHttpResponse 
 from django.views.decorators.csrf import csrf_exempt
 from .models import Conversation, Message
 from django.db import transaction
 import requests
 from django.conf import settings
+from .memory import get_history_messages, format_app_memory_text, set_app_memory
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 OLLAMA_MODEL = "gemma2:27b" 
@@ -41,9 +42,11 @@ def chat(request):
     if not user_text:
         return JsonResponse({"error": "message is required"}, status=400)
 
+    
+    
     # Save to data base 
     conv = save_message(conversation_id, "user", user_text)
-    assistant_text = call_ai(user_text)
+    assistant_text = call_ai(conv.id, user_text)
     save_message(conv.id, "assistant", assistant_text)
 
 
@@ -55,13 +58,32 @@ def chat(request):
         }
     })
 
-def call_ai(user_text: str) -> str:
+def call_ai(conversation_id: int, user_text: str) -> str:
     system_prompt = getattr(settings, "AI_SYSTEM_PROMPT", "You are a helpful assistant.")
 
-    messages = [
-        {"role": "assistant", "content": system_prompt},
-    ]
-    messages.append({"role": "user", "content": user_text})
+    # 1) global memory text
+    app_memory_text = format_app_memory_text()
+
+    # 2) full history
+    history = get_history_messages(conversation_id)
+
+    messages = []
+
+    # ===== A) SYSTEM PROMPT =====
+    # Chuẩn là role="system". Nhưng anh muốn role="assistant" thì để như dưới:
+    messages.append({"role": "assistant", "content": system_prompt})
+
+    # ===== B) APP MEMORY =====
+    if app_memory_text.strip():
+        # cái này cũng nên là system, nhưng nếu anh muốn đồng bộ thì để assistant
+        messages.append({"role": "assistant", "content": app_memory_text})
+
+    # ===== C) HISTORY + CURRENT USER =====
+    messages.extend(history)
+
+    # đảm bảo user_text có mặt (trong trường hợp history chưa có)
+    if not history or history[-1].get("role") != "user" or history[-1].get("content") != user_text:
+        messages.append({"role": "user", "content": user_text})
 
     r = _http.post(
         OLLAMA_URL,
@@ -94,29 +116,31 @@ def create_conversation(request):
     save_message(conv.id, "user", user_text)
 
     # 3) trả lời assistant + lưu DB
-    assistant_text = call_ai(user_text)
+    assistant_text = call_ai(conv.id, user_text)
     save_message(conv.id, "assistant", assistant_text)
 
-    # 4) tạo title
+    # 4) tạo title prompt
     title_prompt = (
         "Based on the user's message, generate a very short chat title (max 6 words). "
         "Return ONLY the title, no quotes, no punctuation.\n"
         f"User message: {user_text}"
     )
-    ai_title = call_ai(title_prompt)
 
-    # 5) làm sạch title
+    # 5) gọi AI để tạo title (dùng cùng conversation_id cho tiện)
+    ai_title = call_ai(conv.id, title_prompt)
+
+    # 6) làm sạch title
     ai_title = (ai_title or "").strip().replace("\n", " ")
     if not ai_title:
         ai_title = f"Conversation {conv.id}"
     if len(ai_title) > 60:
         ai_title = ai_title[:60].strip()
 
-    # ✅ 6) LƯU TITLE VÀO DB
+    # 7) lưu title
     conv.title = ai_title
     conv.save(update_fields=["title"])
 
-    # 7) trả về
+    # 8) trả về
     return JsonResponse({
         "conversation_id": conv.id,
         "title": conv.title,
@@ -126,6 +150,7 @@ def create_conversation(request):
             "content": assistant_text
         }
     }, status=201)
+
 
 
 
@@ -195,3 +220,89 @@ def delete_conversation(request, conversation_id):
     conv.is_deleted = True
     conv.save(update_fields=["is_deleted"])
     return JsonResponse({"success": True, "deleted_id": conversation_id}, status=200)
+
+
+def ollama_stream(messages):
+    with _http.post(
+        OLLAMA_URL,
+        json={
+            "model": OLLAMA_MODEL,
+            "messages": messages,
+            "stream": True
+        },
+        stream=True,
+        timeout=(3, 120)
+    ) as r:
+        r.raise_for_status()
+
+        for line in r.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+
+            obj = json.loads(line)
+
+            chunk = ((obj.get("message") or {}).get("content") or "")
+            if chunk:
+                yield chunk
+
+            if obj.get("done") is True:
+                break
+@csrf_exempt
+def chat_stream(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST method is allowed"}, status=405)
+
+    data = json.loads(request.body or "{}")
+    conversation_id = data.get("conversation_id")
+    user_text = (data.get("message") or "").strip()
+
+    if not conversation_id:
+        return JsonResponse({"error": "conversation_id is required"}, status=400)
+    if not user_text:
+        return JsonResponse({"error": "message is required"}, status=400)
+
+    # 1) lưu user message
+    conv = save_message(conversation_id, "user", user_text)
+
+    system_prompt = getattr(settings, "AI_SYSTEM_PROMPT", "You are a helpful assistant.")
+
+    # ✅ GIỮ NGUYÊN theo ý anh (assistant prompt)
+    app_memory_text = format_app_memory_text()
+    history = get_history_messages(conv.id)
+
+    messages = []
+    messages.append({"role": "assistant", "content": system_prompt})
+
+    if app_memory_text.strip():
+        messages.append({"role": "assistant", "content": app_memory_text})
+
+    messages.extend(history)
+
+    if not history or history[-1].get("role") != "user" or history[-1].get("content") != user_text:
+        messages.append({"role": "user", "content": user_text})
+
+
+    def event_stream():
+        full = []
+        try:
+            # 2) stream token ra dần
+            for chunk in ollama_stream(messages):
+                full.append(chunk)
+                # SSE format
+                yield f"data: {chunk}\n\n"
+
+            # 3) lưu assistant message sau khi xong
+            assistant_text = "".join(full).strip() or "No response."
+            save_message(conv.id, "assistant", assistant_text)
+
+            yield "event: done\ndata: [DONE]\n\n"
+
+        except Exception as e:
+            yield f"event: error\ndata: {str(e)}\n\n"
+
+    resp = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    resp["Cache-Control"] = "no-cache"
+    resp["X-Accel-Buffering"] = "no"
+    return resp
+
+
