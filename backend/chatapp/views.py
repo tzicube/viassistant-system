@@ -175,16 +175,23 @@ def conversation_detail(request, conversation_id: int):
         "messages": messages
     }, status=200)
 
+@csrf_exempt
 def delete_conversation(request, conversation_id):
     if request.method != "DELETE":
         return JsonResponse({"error": "Only DELETE method is allowed"}, status=405)
 
-    try:
-        conv = Conversation.objects.get(id=conversation_id)
-    except Conversation.DoesNotExist:
-        return JsonResponse({"error": "Conversation not found"}, status=404)
+    # ✅ debug chứng cứ
+    last_ids = list(Conversation.objects.order_by("-id").values_list("id", flat=True)[:10])
+    exists = Conversation.objects.filter(id=conversation_id).exists()
 
+    if not exists:
+        return JsonResponse({
+            "error": "Conversation not found",
+            "asked_id": conversation_id,
+            "last_ids_in_db": last_ids,
+        }, status=404)
+
+    conv = Conversation.objects.get(id=conversation_id)
     conv.is_deleted = True
     conv.save(update_fields=["is_deleted"])
-
-    return JsonResponse({"success": True})
+    return JsonResponse({"success": True, "deleted_id": conversation_id}, status=200)

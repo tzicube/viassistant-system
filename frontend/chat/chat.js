@@ -211,6 +211,7 @@ async function loadHistory() {
 
 // gọi ngay khi load trang
 loadHistory();
+console.log("render history id:", c.conversation_id, c.title);
 
 
 
