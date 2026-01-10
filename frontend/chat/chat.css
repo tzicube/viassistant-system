@@ -50,18 +50,40 @@ html, body {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #fff;
+  color:#ddd;              /* ← icon sẽ lấy màu này */
   cursor: pointer;
-  font-size: 23px; 
-}
+  
 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.menu-icon {
+  width: 35px;
+  height: 35px;
+  filter: brightness(0) invert(1);
+}
+/* hover có nền */
 .menu-btn:hover {
   background: rgba(255,255,255,0.08);
 }
 
+/* click có nền + viền tím */
 .menu-btn:active {
-  background: rgba(160,120,255,.18);
+  
   box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
+}
+
+/* focus bằng bàn phím */
+.menu-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
+}
+
+/* không cho con bên trong vẽ viền */
+.menu-btn,
+.menu-btn * {
+  outline: none !important;
+  box-shadow: none;
 }
 
 .logo {
@@ -113,15 +135,7 @@ html, body {
   background: rgba(255,255,255,0.02);
 }
 
-.search-icon {
-  width: 29px;
-  height: 29px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1;
-  color: #e5e5e5;
-  flex-shrink: 0;
-}
+
 
 .search-box input {
   flex: 1;
@@ -133,9 +147,10 @@ html, body {
 }
 
 .new-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 15px;
+  position: relative;
 
   background: transparent;
   border: 1.5px solid rgba(255,255,255,0.35);
@@ -205,15 +220,19 @@ html, body {
 
 
 .new-project-btn{
-  width: 100%;
+  width: 248px;
+  height: 40px;
+  border-radius: 15px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 
   background: transparent;
   border: none;
   color: #fff;
   font-size: 18px;
+  font-weight: 500;
+  white-space: nowrap;
   padding: 10px 0px;
   border-radius: 10px;
   margin-left: 0;
@@ -233,13 +252,10 @@ html, body {
 }
 
 .newchat-icon {
-  width: 26px;
-  height: 26px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: 35px;
+  height: 35px;
+  filter: brightness(0) invert(1);
+  flex-shrink: 0;
 }
 
 .history-title {
@@ -263,15 +279,22 @@ html, body {
 
 /* ===== HOLD CHAT BUTTON ===== */
 .hold-chat-btn {
-  border-radius: 19px;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
   background: transparent;
   color: #fff;
   border: none;
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hold-chat-btn svg {
-  width: 35px;
-  height: 35px;
+  width: 5px;
+  height: 5px;
 }
 
 .hold-chat-btn:hover {
@@ -279,8 +302,19 @@ html, body {
 }
 
 .hold-chat-btn:active {
+  background: rgba(160,120,255,.12);
   box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
   
+}
+.menu-btn:focus-visible {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.35);
+}
+
+
+.icon-chat {
+  width: 45px;
+  height: 45px;
+  filter: brightness(0) invert(1);
 }
 
 
@@ -292,6 +326,7 @@ html, body {
   flex-direction: column;
   margin-left: 0;
   transition: margin-left 0.3s ease;
+  position: relative;
 
   /* ❌ KHÔNG ĐƯỢC ĐẨY MAIN */
   transform: none !important;
@@ -402,6 +437,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
+
+  
 }
 
 .input-box input {
@@ -410,8 +447,13 @@ html, body {
   border-radius: 999px;
   border: none;
   outline: none;
-}
+  background: #fff;
 
+}
+.input-box input:focus {
+  box-shadow: 0 0 0 2px rgba(167,139,250,.8);
+  border-radius: 999px;
+}
 /* ================= BUTTONS ================= */
 .upload-btn {
   width: 44px;
@@ -429,19 +471,45 @@ html, body {
 }
 
 .send-btn {
-  height: 44px;
-  padding: 0 20px;
+  height: 37px;
+  width: 60px;           /* nút dài như hình mày */
   border-radius: 22px;
-  border: none;
   background: #1f1f1f;
-  color: #fff;
-  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.send-icon {
+  width: 33px;           /* tăng size ở đây */
+  height: 33px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
 
 .send-btn:hover {
   background: #2c2c2c;
 }
 
+
+/* click có nền + viền tím */
+.send-btn:active {
+  
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
+}
+
+/* focus bằng bàn phím */
+.send-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
+}
+
+/* không cho con bên trong vẽ viền */
+.send-btn,
+.send-btn * {
+  outline: none !important;
+  box-shadow: none;
+}
 .typing {
   display: flex;
   gap: 6px;
@@ -449,6 +517,7 @@ html, body {
   font-weight: 700;
   color: #e5e5e5;
 }
+
 
 .typing span {
   animation: bounce 1.4s infinite ease-in-out;
@@ -463,3 +532,58 @@ html, body {
   40% { transform: translateY(-6px); opacity: 1; }
 }
 
+.welcome-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(20px) scale(0.96);
+  transition: all 0.6s cubic-bezier(.2,.9,.2,1);
+}
+
+.welcome-content {
+  text-align: center;
+  max-width: 700px;
+}
+
+.welcome-content h1 {
+  font-size: 25px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.welcome-content p {
+  margin-top: 8px;
+  font-size: 18px;
+  color: #aaa;
+}
+#welcomeScreen.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Glow */
+#welcomeTitle {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 12px rgba(0,255,255,0.25);
+}
+
+/* Subtitle fade in later */
+#welcomeSubtitle {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: subtitleFade 0.6s ease forwards;
+  animation-delay: 0.4s;
+}
+
+@keyframes subtitleFade {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
