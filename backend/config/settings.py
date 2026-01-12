@@ -12,9 +12,16 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 
+OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
+OLLAMA_MODEL = "gemma2:27b"  
+ # đổi theo model anh đang dùng
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+WHISPER_MODEL_NAME = "large-v3"
 
+TRANSLATE_HISTORY_PATH = BASE_DIR / "data" / "translate_history.json"
+TRANSLATE_MAX_TURNS_FOR_PROMPT = 50
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/

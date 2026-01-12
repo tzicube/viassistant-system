@@ -5,14 +5,10 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Conversation, Message
 from django.db import transaction
 import requests
-from django.conf import settings
+from django.conf import settings 
+from config.settings import OLLAMA_URL, OLLAMA_MODEL
 from .memory import get_history_messages, format_app_memory_text, set_app_memory
-
-OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-OLLAMA_MODEL = "gemma2:27b" 
-#qwen2.5-coder:14b
-#llama3.2-vision
-
+from django.views.decorators.http import require_POST
 
 # ✅ reuse HTTP connection (keep-alive)
 _http = requests.Session()
@@ -306,3 +302,36 @@ def chat_stream(request):
     return resp
 
 
+@csrf_exempt
+@require_POST
+def translate_audio(request):
+    audio = request.FILES.get("audio")
+    title = request.POST.get("title", "").strip()
+    input_lang = request.POST.get("input_lang", "").strip()
+    output_lang = request.POST.get("output_lang", "").strip()
+    setting = request.POST.get("setting", "").strip()
+
+    if not audio:
+        return JsonResponse({"ok": False, "error": "missing_audio"}, status=400)
+    if not input_lang:
+        return JsonResponse({"ok": False, "error": "missing_input_lang"}, status=400)
+    if not output_lang:
+        return JsonResponse({"ok": False, "error": "missing_output_lang"}, status=400)
+
+    # tối giản: title/setting cho phép rỗng
+    if not title:
+        title = "default"
+    if not setting:
+        setting = "Translate accurately using the title and chat history."
+
+    try:
+        data = process_translate_audio(
+            title=title,
+            input_lang=input_lang,
+            output_lang=output_lang,
+            setting=setting,
+            uploaded_file=audio
+        )
+        return JsonResponse(data, status=200)
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)

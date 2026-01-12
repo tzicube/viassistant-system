@@ -1,0 +1,192 @@
+Thiết kế thêm tính năng cho hệ thống
+Bao gồm 1 bot chat sử dụng esp32s và 1 app dịch thuật sử dụng a.i
+sử dụng
+STT (Speech-to-Text): Whisper large-v3
+TTS (Text-to-Speech): Coqui XTTS-v2
+
+1 .App dịch thuật bằng A.I
+
+FLOW TỔNG THỂ – STT + TRANSLATE (1 ENDPOINT)
+Mục tiêu
+
+Nhận audio
+
+Chuyển giọng nói → text
+
+Sử dụng a.i dịch text → ngôn ngữ đích
+
+Trả về text gốc + text đã dịch
+
+lưu tạm vào 1 file json ( tất cả hội thoại ) 
+
+1) INPUT (Client → Server)
+
+Client gửi 1 request duy nhất:
+
+title: Chủ đề dịch (chỉ để hiển thị / context)
+
+input_lang: Ngôn ngữ đầu vào (en, vi,....)
+
+output_lang: Ngôn ngữ sau dịch (vi, en, …)
+Yêu cầu là đưa vào cho a.i 4 yếu tố 
+- history : toàn bộ file json 
+- title : Từ đầu vào người dùng
+- text : nội dung sau stt
+- setting yêu cầu dịch vd : "Dịch sát nghĩa theo tile và lịch sử chat "
+
+audio: File âm thanh (wav)
+
+2) SERVER – XỬ LÝ TỪNG BƯỚC
+Bước 1: Nhận & kiểm tra dữ liệu
+
+Kiểm tra có file audio hay không
+
+Kiểm tra input_lang và output_lang
+
+Nếu thiếu → trả lỗi
+
+Bước 2: Chuẩn hoá audio
+
+Convert audio về:
+
+wav
+
+16 kHz
+
+Mono
+
+Mục tiêu: đảm bảo STT ổn định
+
+Bước 3: STT (Speech → Text)
+
+Đưa audio vào Whisper
+
+Nhận kết quả:
+
+stt_text: nội dung người nói
+
+Bước 4: Xác định ngôn ngữ đầu vào
+
+Dùng đúng input_lang client gửi
+
+Bước 5: DỊCH (Translate bằng AI)
+
+Dùng AI để dịch:
+
+từ input_lang
+
+sang output_lang
+
+
+3) OUTPUT (Server → Client)
+
+Server trả JSON duy nhất:
+
+{
+  "title": "Travel conversation",
+  "input_lang": "en",
+  "output_lang": "vi",
+  "stt_text": "Where is the nearest MRT station?",
+  "translated_text": "Ga MRT gần nhất ở đâu?"
+}
+
+4) FLOW 1 DÒNG (để vẽ sơ đồ)
+
+Audio → Normalize → Whisper STT → stt_text → AI Translate → translated_text → JSON
+
+5) Đặc điểm flow (để ghi chú)
+
+
+
+Không ID
+
+Dùng cho: 
+
+Test STT
+
+Test dịch AI
+
+ESP32 / App đều dùng được
+2. ESP32S Bot Chat – GIAO TIẾP (DEMO)
+FLOW TỔNG THỂ – STT + AI CHAT (1 ENDPOINT)
+Mục tiêu
+
+ESP32 gửi audio
+
+Server STT → ra stt_text
+
+Server gọi AI → ra assistant_text (hội thoại tự nhiên)
+
+Trả về assistant_text cho ESP32 (ESP32 hiển thị / xử lý tiếp)
+
+Lưu DB 2 bên với preset:
+
+conversation_id = 1
+
+title = "ViAsistant"
+
+1) INPUT (ESP32 → Server)
+
+ESP32 gửi 1 request:
+
+audio: wav
+
+setting (tuỳ chọn): kiểu trả lời, ví dụ:
+
+“Trả lời ngắn gọn, thân thiện, đúng trọng tâm”
+
+“Nói như trợ lý ảo, xưng hô lịch sự”
+
+Preset
+
+conversation_id = 1
+
+title = "ViAsistant"
+
+AI nhận 4 yếu tố
+
+history: messages trong DB của conversation_id=1
+
+title: ViAsistant
+
+text: stt_text
+
+setting: instruction (nếu có)
+
+2) SERVER – XỬ LÝ
+
+Validate có audio
+
+Set preset conversation_id=1, title="ViAsistant" và đảm bảo DB có conversation 1
+
+Normalize audio → WAV 16k mono
+
+Whisper STT → stt_text
+
+Lưu message USER vào DB (id=1)
+
+Load history (id=1) + build prompt → gọi AI → assistant_text
+
+Lưu message ASSISTANT vào DB (id=1)
+
+Trả response JSON
+
+3) OUTPUT (Server → ESP32)
+{
+  "conversation_id": 1,
+  "title": "ViAsistant",
+  "stt_text": "How was your day?",
+  "assistant_text": "It was good. How about yours?"
+}
+
+4) FLOW 1 dòng
+
+ESP32 Audio → Normalize → Whisper STT → stt_text → Save(user) DB(id=1) → Load history DB(id=1) → AI Chat → assistant_text → Save(assistant) DB(id=1) → JSON
+
+5) Ghi chú (đúng mục tiêu “giao tiếp trước”)
+
+Không phân tích intent
+
+Không bật/tắt thiết bị
+
+Chỉ hội thoại tự nhiên + lưu DB để có ngữ cảnh
