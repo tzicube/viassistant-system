@@ -8,5 +8,4 @@ urlpatterns = [
     path("api/conversations/<int:conversation_id>/", conversation_detail),
     path("api/delete_conversations/<int:conversation_id>/", delete_conversation),
     path("api/chat/stream", chat_stream),
-
 ]
