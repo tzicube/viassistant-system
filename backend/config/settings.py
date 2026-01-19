@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-OLLAMA_MODEL = "gemma2:27b"  
+OLLAMA_MODEL = "qwen2.5:14b" # gemma2:27b 
  # đổi theo model anh đang dùng
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -33,7 +33,11 @@ SECRET_KEY = 'django-insecure-50%m%%9f1e+p*vqbsg%is3o4q2^g-p2&rh27ovx55b216rf((w
 DEBUG = True
 
 ALLOWED_HOSTS = []
+CHANNEL_LAYERS = {
+    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+}
 
+ASGI_APPLICATION = "config.asgi.application"
 
 # Application definition
 
@@ -46,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'chatapp',
     'corsheaders',
+    "virecord",
 ]
 
 MIDDLEWARE = [
@@ -94,6 +99,15 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
         }
+    },
+    "virecord": {  # thêm DB cho module ViRecord
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "virecord",
+        "USER": "root",
+        "PASSWORD": "31122005",
+        "HOST": "127.0.0.1",
+        "PORT": "3306",
+        "OPTIONS": {"charset": "utf8mb4"},
     }
 }
 
