@@ -1,8 +1,9 @@
-const API_URL = "http://127.0.0.1:8000/api/chat";
-const LIST_API = "http://127.0.0.1:8000/api/conversations";
-const DETAIL_API_BASE = "http://127.0.0.1:8000/api/conversations";
-const CREATE_API = "http://127.0.0.1:8000/api/creatnew";
-const DELETE_API_BASE = "http://127.0.0.1:8000/api/delete_conversations";
+const URL = "http://127.0.0.1:8000" ; 
+const API_URL = URL + "/api/chat";
+const LIST_API = URL +"/api/conversations";
+const DETAIL_API_BASE = URL +"/api/conversations";
+const CREATE_API = URL +"/api/creatnew";
+const DELETE_API_BASE = URL +"/api/delete_conversations";
 
 let currentConversationId = null;
 
@@ -141,12 +142,13 @@ async function sendMessage() {
 
     const data = await res.json();
     const aiMsg = data.message;
-
+    hideTyping();
     // 4) UI: hiển thị bot (giống hệt code cũ)
     addMessage(aiMsg.content, aiMsg.role);
 
   } catch (err) {
     console.error(err);
+    hideTyping();
     addMessage("⚠️ Server not responding", "assistant");
   }
 }
@@ -181,16 +183,19 @@ function showTyping() {
   const container = document.querySelector(".chat-container");
 
   const div = document.createElement("div");
-  div.className = "bot typing";
+  div.className = "bot typing typing-robot";
   div.id = "typing-indicator";
   div.innerHTML = `
-    <span>.</span>
-    <span>.</span>
-    <span>.</span>
+    <span class="robot" aria-hidden="true">💬</span>
+    <span class="sr-only">Thinking…</span>
   `;
 
   container.appendChild(div);
   container.parentElement.scrollTop = container.parentElement.scrollHeight;
+}
+function hideTyping() {
+  const el = document.getElementById("typing-indicator");
+  if (el) el.remove();
 }
 
 /* ================= NEW CHAT ================= */
@@ -211,6 +216,7 @@ newChatBtn.addEventListener("click", () => {
   // random lại câu chào
   showRandomWelcome();
 
+  setPageTitle(""); 
   // focus input
   const input = document.getElementById("input");
   input.value = "";
@@ -226,6 +232,64 @@ newChatBtn.addEventListener("click", () => {
 
 /* ================= HISTORY LIST ================= */
 const historyUl = document.querySelector(".history");
+/* ================= CONFIRM DELETE MODAL (UI) ================= */
+const confirmOverlay = document.getElementById("confirmOverlay");
+const confirmOkBtn = document.getElementById("confirmOk");
+const confirmCancelBtn = document.getElementById("confirmCancel");
+const confirmTitleEl = document.getElementById("confirmTitle");
+const confirmDescEl = document.getElementById("confirmDesc");
+
+let _confirmResolver = null;
+
+function openConfirmModal({
+  title = "Delete conversation?",
+  desc = "This action cannot be undone."
+} = {}) {
+  // fallback nếu HTML chưa có modal
+  if (!confirmOverlay) return Promise.resolve(window.confirm(title));
+
+  if (confirmTitleEl) confirmTitleEl.textContent = title;
+  if (confirmDescEl) confirmDescEl.textContent = desc;
+
+  confirmOverlay.classList.add("show");
+  confirmOverlay.setAttribute("aria-hidden", "false");
+
+  return new Promise((resolve) => {
+    _confirmResolver = resolve;
+  });
+}
+
+function closeConfirmModal(result) {
+  if (!confirmOverlay) return;
+
+  confirmOverlay.classList.remove("show");
+  confirmOverlay.setAttribute("aria-hidden", "true");
+
+  if (typeof _confirmResolver === "function") {
+    const r = _confirmResolver;
+    _confirmResolver = null;
+    r(!!result);
+  }
+}
+
+// Buttons
+if (confirmOkBtn) confirmOkBtn.addEventListener("click", () => closeConfirmModal(true));
+if (confirmCancelBtn) confirmCancelBtn.addEventListener("click", () => closeConfirmModal(false));
+
+// Click outside to close
+if (confirmOverlay) {
+  confirmOverlay.addEventListener("click", (e) => {
+    if (e.target === confirmOverlay) closeConfirmModal(false);
+  });
+}
+
+// ESC to close
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && confirmOverlay && confirmOverlay.classList.contains("show")) {
+    closeConfirmModal(false);
+  }
+});
+
 
 async function loadHistory() {
   try {
@@ -237,6 +301,16 @@ async function loadHistory() {
 
     historyUl.innerHTML = "";
 
+    // ✅ 1 listener duy nhất: click ra ngoài thì đóng mọi menu đang mở
+    if (!window.__historyOutsideClickBound) {
+      document.addEventListener("click", () => {
+        document
+          .querySelectorAll(".history-actions.open")
+          .forEach(el => el.classList.remove("open"));
+      });
+      window.__historyOutsideClickBound = true;
+    }
+
     conversations.forEach((c) => {
       const li = document.createElement("li");
       li.dataset.conversationId = c.conversation_id;
@@ -246,42 +320,79 @@ async function loadHistory() {
       titleSpan.textContent = c.title || `Conversation ${c.conversation_id}`;
       titleSpan.className = "history-title-text";
 
-      // delete button
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "✕";
-      delBtn.className = "history-del-btn";
-
       // click load conversation
       titleSpan.addEventListener("click", () => {
         loadConversationDetail(c.conversation_id);
 
+        setPageTitle(c.title || `Conversation ${c.conversation_id}`);
+
         document
-          .querySelectorAll(".history li.active")
-          .forEach(x => x.classList.remove("active"));
+        .querySelectorAll(".history li.active")
+        .forEach(x => x.classList.remove("active"));
 
         li.classList.add("active");
       });
 
-      // click delete
-      delBtn.addEventListener("click", async (e) => {
+
+      /* ================= UI DELETE: 3 dots + menu ================= */
+      const actions = document.createElement("div");
+      actions.className = "history-actions";
+
+      const moreBtn = document.createElement("button");
+      moreBtn.type = "button";
+      moreBtn.className = "history-more-btn";
+      moreBtn.textContent = "⋯";
+
+      const menu = document.createElement("div");
+      menu.className = "history-menu";
+
+      const delItem = document.createElement("button");
+      delItem.type = "button";
+      delItem.className = "history-menu-item danger";
+      delItem.textContent = "Delete";
+
+      menu.appendChild(delItem);
+      actions.appendChild(moreBtn);
+      actions.appendChild(menu);
+
+      // open / close menu (không cho click lan ra ngoài)
+      moreBtn.addEventListener("click", (e) => {
         e.stopPropagation();
 
-        const ok = confirm("Delete this conversation?");
+        // đóng menu khác trước
+        document
+          .querySelectorAll(".history-actions.open")
+          .forEach(el => {
+            if (el !== actions) el.classList.remove("open");
+          });
+
+        actions.classList.toggle("open");
+      });
+
+      // click delete
+      delItem.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        actions.classList.remove("open");
+
+        const ok = await openConfirmModal({
+          title: "Delete this conversation?",
+          desc: "This action cannot be undone.",
+        });
         if (!ok) return;
 
         try {
-          const res = await fetch(
+          const delRes = await fetch(
             `${DELETE_API_BASE}/${c.conversation_id}/`,
             { method: "DELETE" }
           );
 
-          if (!res.ok) {
-            console.error("Delete HTTP error", res.status);
+          if (!delRes.ok) {
+            console.error("Delete HTTP error", delRes.status);
             alert("Delete failed");
             return;
           }
 
-          const result = await res.json();
+          const result = await delRes.json();
           if (!result.success) {
             alert("Delete failed");
             return;
@@ -291,7 +402,7 @@ async function loadHistory() {
           li.remove();
 
           // nếu đang mở đúng chat bị xoá
-          if (currentConversationId === c.conversation_id) {
+          if (String(currentConversationId) === String(c.conversation_id)) {
             currentConversationId = null;
             document.querySelector(".chat-container").innerHTML = "";
           }
@@ -302,8 +413,9 @@ async function loadHistory() {
         }
       });
 
+      /* ================= append ================= */
       li.appendChild(titleSpan);
-      li.appendChild(delBtn);
+      li.appendChild(actions);
       historyUl.appendChild(li);
     });
 
@@ -317,6 +429,7 @@ async function loadHistory() {
 
 // gọi ngay khi load trang
 loadHistory();
+
 
 
 
@@ -355,6 +468,7 @@ async function loadConversationDetail(conversationId) {
 
 
 
+
 async function deleteConversation(conversationId) {
   try {
     const res = await fetch(`${DELETE_API_BASE}/${conversationId}/`, {
@@ -374,6 +488,7 @@ async function deleteConversation(conversationId) {
       currentConversationId = null;
       document.querySelector(".chat-container").innerHTML = "";
       document.getElementById("input").value = "";
+      setPageTitle("");
     }
 
     // Reload history
@@ -385,3 +500,11 @@ async function deleteConversation(conversationId) {
   }
 }
 
+function setPageTitle(chatTitle = "") {
+  if (chatTitle && chatTitle.trim()) {
+    document.title = `ViChat - ${chatTitle}`;
+  } else {
+    document.title = "ViChat";
+  }
+}
+ 

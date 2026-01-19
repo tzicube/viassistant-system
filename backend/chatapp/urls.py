@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import chat ,create_conversation , list_conversations , conversation_detail ,  delete_conversation 
+from .views import chat ,create_conversation , list_conversations , conversation_detail ,  delete_conversation , chat_stream
 
 urlpatterns = [
     path("api/chat", chat),
@@ -7,4 +7,5 @@ urlpatterns = [
     path("api/conversations", list_conversations), 
     path("api/conversations/<int:conversation_id>/", conversation_detail),
     path("api/delete_conversations/<int:conversation_id>/", delete_conversation),
+    path("api/chat/stream", chat_stream),
 ]

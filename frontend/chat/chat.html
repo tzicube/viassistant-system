@@ -2,92 +2,127 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ViChat - Marthome</title>
+  <title>ViChat </title>
+  <link rel="icon" href="assets/logo.png" type="image/png">
   <link rel="stylesheet" href="chat.css" />
 </head>
 <body>
 
-
-
 <div class="app">
 
-  <!-- Sidebar -->
- <!-- HEADER -->
-<aside class="sidebar">
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
 
-  <div class="sidebar-top">
-
-    <div class="search-box">
-      <input type="text" placeholder="Search" />
+    <div class="sidebar-top">
+      <div class="search-box">
+        <input type="text" placeholder="Search" />
+      </div>
     </div>
-  </div>
 
-  <div class="sidebar-body">
-     <div class="sidebar-title">ViChat</div>
+    <div class="sidebar-body">
+      <div class="sidebar-title">ViChat</div>
+
       <button id="newChatBtn" class="new-project-btn">
-        <img src="5GMyF01.svg" class="newchat-icon">
+        <img src="assets/5GMyF01.svg" class="newchat-icon" alt="">
         <span>New Chat</span>
       </button>
-    <div class="history-title">History</div>
-    <ul class="history"></ul>
-  </div>
 
-</aside>
-
- <!-- MAIN (HEADER + CHAT) -->
-  <div class="main">
-    <div id="welcomeScreen" class="welcome-screen">
-  <div class="welcome-content">
-    <h1 id="welcomeTitle"></h1>
-    <p id="welcomeSubtitle"></p>
-  </div>
-</div>
-    <header class="topbar">
-  <div class="topbar-left">
-    <button id="menuBtn" class="menu-btn">
-      <img src="menu.svg" class="menu-btn" />
-    </button>
-    <span class="logo">ViChat</span>
-  </div>
-
-  <div class="topbar-right">
-    <button id="holdChatBtn" class="hold-chat-btn" title="Hold chat">
-      <img src="AYTVc01.svg" class="icon-chat" />
-    </button>
-  </div>
-</header>
-    
-<main class="chat">
-  <div class="messages" id="messages">
-    <!-- 👇 TẤT CẢ TIN NHẮN PHẢI VÀO ĐÂY -->
-    <div class="chat-container">
+      <div class="history-title">History</div>
+      <ul class="history"></ul>
     </div>
-  </div>
 
-  <div class="input-wrapper">
-    <div class="input-box">
-      <button id="uploadBtn" class="upload-btn">+</button>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+
+    <!-- Welcome Screen -->
+    <div id="welcomeScreen" class="welcome-screen">
+      <div class="welcome-content">
+        <div>
+          <img src="assets/logo.png" class="logo-img" alt="logo">
+          <h1 id="welcomeTitle"></h1>
+        </div>
+        <p id="welcomeSubtitle"></p>
+      </div>
+    </div>
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="menuBtn" class="menu-btn">
+          <img src="assets/menu.svg" class="menu-btn" alt="">
+        </button>
+        <span class="logo">ViChat</span>
+      </div>
+
+      <div class="topbar-right">
+        <button id="holdChatBtn" class="hold-chat-btn" title="Hold chat">
+          <img src="assets/AYTVc01.svg" class="icon-chat" alt="">
+        </button>
+      </div>
+    </header>
+
+    <!-- Chat -->
+    <main class="chat">
+
+      <div class="messages" id="messages">
+        <div class="chat-container"></div>
+      </div>
+
+      <div class="input-wrapper">
+        <div class="input-box">
+          <button id="uploadBtn" class="upload-btn">+</button>
+
+          <input
+            type="text"
+            id="input"
+            placeholder="Ask Anything"
+          />
+
+          <button id="sendBtn" class="send-btn">
+            <img src="assets/send.svg" class="send-icon" alt="">
+          </button>
+        </div>
+      </div>
+
       <input
-        type="text"
-        id="input"
-        placeholder="Ask Anything"
+        type="file"
+        id="imageInput"
+        accept="image/*"
+        hidden
       />
-      <button id="sendBtn" class="send-btn">
-       <img src="send.svg" class="send-icon" />
+
+    </main>
+
+  </div> <!-- end .main -->
+</div> <!-- end .app -->
+
+<!-- ================= CONFIRM DELETE MODAL ================= -->
+<div id="confirmOverlay" class="confirm-overlay" aria-hidden="true">
+  <div
+    class="confirm-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="confirmTitle"
+  >
+    <div class="confirm-title" id="confirmTitle">
+      Delete conversation?
+    </div>
+
+    <div class="confirm-desc" id="confirmDesc">
+      This action cannot be undone.
+    </div>
+
+    <div class="confirm-actions">
+      <button id="confirmCancel" class="confirm-btn ghost" type="button">
+        Cancel
+      </button>
+      <button id="confirmOk" class="confirm-btn danger" type="button">
+        Delete
       </button>
     </div>
   </div>
-
-
-<input
-  type="file"
-  id="imageInput"
-  accept="image/*"
-  hidden
-/> 
-    </div>
-  </main>
-
 </div>
 
 <script src="chat.js"></script>

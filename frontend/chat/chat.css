@@ -9,7 +9,7 @@ html, body {
   height: 100%;
   background: #000;
   color: #fff;
-  overflow: hidden; /* ❗ body KHÔNG scroll */
+  overflow: hidden; /* body KHÔNG scroll */
 }
 
 /* ================= APP ================= */
@@ -50,36 +50,26 @@ html, body {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color:#ddd;              /* ← icon sẽ lấy màu này */
+  color: #ddd;
   cursor: pointer;
-  
 
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.menu-icon {
-  width: 35px;
-  height: 35px;
-  filter: brightness(0) invert(1);
-}
-/* hover có nền */
+
 .menu-btn:hover {
   background: rgba(255,255,255,0.08);
 }
 
-/* click có nền + viền tím */
 .menu-btn:active {
-  
   box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
 }
 
-/* focus bằng bàn phím */
 .menu-btn:focus-visible {
   box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
 }
 
-/* không cho con bên trong vẽ viền */
 .menu-btn,
 .menu-btn * {
   outline: none !important;
@@ -90,7 +80,34 @@ html, body {
   font-size: 28px;
   font-weight: 700;
   letter-spacing: 0.5px;
+}
 
+.hold-chat-btn {
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  color: #fff;
+  border: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hold-chat-btn:hover {
+  background: rgba(255,255,255,.06);
+}
+
+.hold-chat-btn:active {
+  background: rgba(160,120,255,.12);
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
+}
+
+.icon-chat {
+  width: 45px;
+  height: 45px;
+  filter: brightness(0) invert(1);
 }
 
 /* ================= SIDEBAR ================= */
@@ -104,21 +121,25 @@ html, body {
   height: 100vh;
   background: #111;
   color: #fff;
-  overflow: hidden;
+
+  /* ✅ FIX: cho dropdown/menu bung ra */
+  overflow: visible;
 
   transform: translateX(-100%);
   transition: transform 0.3s ease;
   z-index: 1500;
 }
+
 .sidebar-top {
   display: flex;
-  align-items: center;       /* 🔑 cùng trục */
+  align-items: center;
   gap: 14px;
   min-width: 0;
-  height: 40px;              /* 🔑 khóa chiều cao */
+  height: 40px;
   padding: 0 16px;
   margin-top: 12px;
 }
+
 .search-box {
   flex: 1;
   height: 35px;
@@ -131,11 +152,8 @@ html, body {
 
   border: 1.5px solid rgba(255,255,255,0.35);
   border-radius: 999px;
-
   background: rgba(255,255,255,0.02);
 }
-
-
 
 .search-box input {
   flex: 1;
@@ -146,67 +164,7 @@ html, body {
   outline: none;
 }
 
-.new-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 15px;
-  position: relative;
-
-  background: transparent;
-  border: 1.5px solid rgba(255,255,255,0.35);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  color: #e5e5e5;
-}
-.new-btn:hover {
-  color: #fff;
-}
-.app.sidebar-open .sidebar {
-  transform: translateX(0);
-}
-
-/* Khi sidebar mở, đẩy topbar sang phải */
-.app.sidebar-open .topbar {
-  left: 280px;   /* đúng bằng width sidebar */
-}
-.sidebar-title {
-  margin: 14px 0 18px;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  margin: 10px 0 12px;
-  margin-left: 0;
-}
-
-.sidebar-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px 20px;
-  overflow-x: hidden;
-}
-.brand-inline {
-  display: flex;
-  align-items: center;   /* 🔑 cùng baseline */
-  gap: 8px;
-
-  height: 36px;          /* 🔑 bằng search */
-  font-size: 18px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.icon-edit {
-  width: 22px;
-  height: 22px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-}
-.search-box:hover,
-.new-btn:hover {
+.search-box:hover {
   border-color: #fff;
 }
 
@@ -214,15 +172,35 @@ html, body {
   border-color: #a78bfa;
 }
 
-.new-btn:hover {
-  color: #fff;
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;   /* ✅ scroll nằm trong body */
+  overflow-x: hidden; /* ✅ tránh ngang */
+  padding: 24px 20px;
 }
 
+.sidebar-title {
+  margin: 10px 0 12px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
 
+.app.sidebar-open .sidebar {
+  transform: translateX(0);
+}
+
+/* Khi sidebar mở, đẩy topbar sang phải */
+.app.sidebar-open .topbar {
+  left: 280px;
+}
+
+/* ================= NEW CHAT BUTTON ================= */
 .new-project-btn{
   width: 248px;
   height: 40px;
-  border-radius: 15px;
+  border-radius: 10px;
+
   display: flex;
   align-items: center;
   gap: 10px;
@@ -232,10 +210,7 @@ html, body {
   color: #fff;
   font-size: 18px;
   font-weight: 500;
-  white-space: nowrap;
   padding: 10px 0px;
-  border-radius: 10px;
-  margin-left: 0;
 
   cursor: pointer;
 }
@@ -245,10 +220,7 @@ html, body {
 }
 
 .new-project-btn:active {
- 
-  border-radius: 12px;
   box-shadow: inset 0 0 0 1px rgba(167,139,250,.6);
-  
 }
 
 .newchat-icon {
@@ -258,66 +230,125 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ================= HISTORY ================= */
 .history-title {
   margin-top: 16px;
   margin-bottom: 8px;
   font-size: 22px;
   font-weight: 600;
-  margin-left: 0;
 }
-.history li {
+
+/* layout item */
+.history li{
   list-style: none;
-  padding: 8px 6px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding: 8px 10px;
+  border-radius: 10px;
   font-size: 15px;
   color: #ddd;
   cursor: pointer;
 }
 
-.history li:hover {
-  color: #fff;
+.history li:hover{
+  background: rgba(255,255,255,0.06);
+  color:#fff;
 }
 
-/* ===== HOLD CHAT BUTTON ===== */
-.hold-chat-btn {
-  border-radius: 10px;
-  width: 40px;
-  height: 40px;
-  background: transparent;
-  color: #fff;
-  border: none;
+.history li.active{
+  background: rgba(167, 139, 250, 0.12);
+}
+
+.history-title-text{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 4px;
+}
+
+/* ================= HISTORY ACTIONS (3 dots + menu) ================= */
+.history-actions{
   position: relative;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-shrink: 0;
+  z-index: 2600; /* đảm bảo menu nổi trên list */
 }
 
-.hold-chat-btn svg {
-  width: 5px;
-  height: 5px;
+.history-more-btn{
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #ddd;
+  cursor: pointer;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size: 22px;
+  line-height: 1;
 }
 
-.hold-chat-btn:hover {
-  background: rgba(255,255,255,.06);
+.history-more-btn:hover{
+  background: rgba(255,255,255,0.08);
+  color:#fff;
 }
 
-.hold-chat-btn:active {
-  background: rgba(160,120,255,.12);
-  box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
-  
-}
-.menu-btn:focus-visible {
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.35);
+.history-more-btn:active{
+  background: rgba(167, 139, 250, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.6);
 }
 
+.history-menu{
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
 
-.icon-chat {
-  width: 45px;
-  height: 45px;
-  filter: brightness(0) invert(1);
+  min-width: 160px;
+  background: #0f0f0f;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 6px;
+
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+  display: none;
+
+  z-index: 3000;
 }
 
+.history-actions.open .history-menu{
+  display:block;
+}
 
+.history-menu-item{
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #e5e5e5;
+
+  padding: 10px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.history-menu-item:hover{
+  background: rgba(255,255,255,0.08);
+}
+
+.history-menu-item.danger{
+  color: #ff6b6b;
+}
+
+.history-menu-item.danger:hover{
+  background: rgba(255,107,107,0.12);
+}
 
 /* ================= MAIN ================= */
 .main {
@@ -327,21 +358,19 @@ html, body {
   margin-left: 0;
   transition: margin-left 0.3s ease;
   position: relative;
-
-  /* ❌ KHÔNG ĐƯỢC ĐẨY MAIN */
   transform: none !important;
 }
+
 .app.sidebar-open .main {
   margin-left: 280px;
 }
+
 /* ================= CHAT ================= */
 .chat {
   flex: 1;
   display: flex;
   flex-direction: column;
-
-  /* trừ topbar */
-  padding-top: 50px;
+  padding-top: 50px; /* trừ topbar */
   min-height: 0;
 }
 
@@ -349,11 +378,9 @@ html, body {
 .messages {
   flex: 1;
   overflow-y: auto;
-
   padding: 24px;
 }
 
-/* KHUNG CHAT LUÔN Ở GIỮA */
 .chat-container {
   width: 100%;
   max-width: 800px;
@@ -372,7 +399,6 @@ html, body {
   line-height: 1.5;
 }
 
-/* BOT — KHÔNG BUBBLE */
 .bot {
   background: none;
   padding: 0;
@@ -381,7 +407,6 @@ html, body {
   align-self: flex-start;
 }
 
-/* USER — VIỀN NHẸ */
 .user {
   background: transparent;
   color: #fff;
@@ -407,14 +432,8 @@ html, body {
 }
 
 @keyframes userIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ================= INPUT ================= */
@@ -437,8 +456,6 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-
-  
 }
 
 .input-box input {
@@ -448,12 +465,13 @@ html, body {
   border: none;
   outline: none;
   background: #fff;
-
 }
+
 .input-box input:focus {
   box-shadow: 0 0 0 2px rgba(167,139,250,.8);
   border-radius: 999px;
 }
+
 /* ================= BUTTONS ================= */
 .upload-btn {
   width: 44px;
@@ -472,7 +490,7 @@ html, body {
 
 .send-btn {
   height: 37px;
-  width: 60px;           /* nút dài như hình mày */
+  width: 60px;
   border-radius: 22px;
   background: #1f1f1f;
   border: none;
@@ -480,36 +498,23 @@ html, body {
   align-items: center;
   justify-content: center;
 }
-.send-icon {
-  width: 33px;           /* tăng size ở đây */
-  height: 33px;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
-}
-
 
 .send-btn:hover {
   background: #2c2c2c;
 }
 
-
-/* click có nền + viền tím */
 .send-btn:active {
-  
   box-shadow: inset 0 0 0 1px rgba(167,139,250,.7);
 }
 
-/* focus bằng bàn phím */
-.send-btn:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
+.send-icon {
+  width: 33px;
+  height: 33px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
-/* không cho con bên trong vẽ viền */
-.send-btn,
-.send-btn * {
-  outline: none !important;
-  box-shadow: none;
-}
+/* ================= TYPING ================= */
 .typing {
   display: flex;
   gap: 6px;
@@ -517,7 +522,6 @@ html, body {
   font-weight: 700;
   color: #e5e5e5;
 }
-
 
 .typing span {
   animation: bounce 1.4s infinite ease-in-out;
@@ -532,6 +536,7 @@ html, body {
   40% { transform: translateY(-6px); opacity: 1; }
 }
 
+/* ================= WELCOME ================= */
 .welcome-screen {
   position: absolute;
   inset: 0;
@@ -544,28 +549,22 @@ html, body {
   transition: all 0.6s cubic-bezier(.2,.9,.2,1);
 }
 
-.welcome-content {
-  text-align: center;
-  max-width: 700px;
-}
-
-.welcome-content h1 {
-  font-size: 25px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.welcome-content p {
-  margin-top: 8px;
-  font-size: 18px;
-  color: #aaa;
-}
 #welcomeScreen.show {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
 
-/* Glow */
+.welcome-content {
+  text-align: center;
+  max-width: 700px;
+}
+
+.logo-img {
+  width: 60px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
 #welcomeTitle {
   font-size: 32px;
   font-weight: 600;
@@ -573,17 +572,122 @@ html, body {
   text-shadow: 0 0 12px rgba(0,255,255,0.25);
 }
 
-/* Subtitle fade in later */
 #welcomeSubtitle {
   opacity: 0;
   transform: translateY(10px);
   animation: subtitleFade 0.6s ease forwards;
   animation-delay: 0.4s;
+  font-size: 18px;
+  color: #aaa;
 }
 
 @keyframes subtitleFade {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= CONFIRM MODAL ================= */
+.confirm-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  padding: 16px;
+}
+
+.confirm-overlay.show{
+  display:flex;
+}
+
+.confirm-modal{
+  width: min(420px, 100%);
+  background: #0f0f0f;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.7);
+}
+
+.confirm-title{
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.confirm-desc{
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.confirm-actions{
+  display:flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.confirm-btn{
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: #1a1a1a;
+  color: #fff;
+  cursor: pointer;
+}
+
+.confirm-btn:hover{
+  background: #222;
+}
+
+.confirm-btn.ghost{
+  background: transparent;
+}
+
+.confirm-btn.ghost:hover{
+  background: rgba(255,255,255,0.06);
+}
+
+.confirm-btn.danger{
+  border-color: rgba(255,107,107,0.5);
+  background: rgba(255,107,107,0.12);
+  color: #ff6b6b;
+}
+
+.confirm-btn.danger:hover{
+  background: rgba(255,107,107,0.2);
+}
+/* ================= TYPING (ROBOT) ================= */
+.typing.typing-robot{
+  gap: 10px;
+  font-size: 26px;
+}
+
+.typing .robot{
+  display: inline-block;
+  transform-origin: 50% 80%;
+  animation: robotWiggle 0.9s infinite ease-in-out;
+  animation-delay: 0s;
+  filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.25));
+}
+
+@keyframes robotWiggle{
+  0%, 100% { transform: rotate(-10deg) translateY(0); opacity: 0.85; }
+  50%      { transform: rotate(10deg) translateY(-2px); opacity: 1; }
+}
+
+/* Screen-reader only */
+.sr-only{
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
 }
