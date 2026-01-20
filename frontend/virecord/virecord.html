@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>ViRecord</title>
+  <style>
+    :root{
+      --bg:#f4f5f7;
+      --ink:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+
+      --card:#ffffff;
+      --softShadow: 0 10px 25px rgba(17,24,39,.08);
+
+      --leftTint:#e9e7ff;
+      --rightTint:#ffe5e8;
+
+      --accent:#ef4444;
+      --accentRing:#fca5a5;
+
+      --drawerW: 340px;
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans";
+      color:var(--ink);
+      background: var(--bg);
+    }
+
+    /* ===== App frame (giống mockup điện thoại) ===== */
+    .phoneWrap{
+      max-width: 430px;
+      margin: 18px auto;
+      padding: 0 12px 18px;
+    }
+    .phone{
+      background:#fff;
+      border-radius: 28px;
+      overflow:hidden;
+      box-shadow: 0 30px 80px rgba(17,24,39,.16);
+      border: 1px solid rgba(17,24,39,.06);
+      min-height: 820px;
+      position: relative;
+    }
+
+    /* ===== Header ===== */
+    .header{
+      height: 76px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 16px 16px 10px;
+      background:#fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .iconBtn{
+      width: 44px; height:44px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background:#fff;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+    }
+    .title{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight: 700;
+      letter-spacing:.2px;
+    }
+    .avatar{
+      width: 44px; height:44px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      display:flex; align-items:center; justify-content:center;
+      font-size: 22px;
+      cursor:pointer;
+    }
+
+    /* ===== Main area ===== */
+    .main{
+      position: relative;
+      height: calc(820px - 76px);
+      background: linear-gradient(90deg, var(--leftTint) 0%, var(--leftTint) 50%, var(--rightTint) 50%, var(--rightTint) 100%);
+    }
+
+    .cards{
+      position:absolute;
+      inset: 14px 14px 120px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .card{
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(17,24,39,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--softShadow);
+      overflow:hidden;
+      position:relative;
+    }
+    .cardTop{
+      flex: 1.05;
+      min-height: 280px;
+    }
+    .cardBottom{
+      flex: .95;
+      min-height: 260px;
+    }
+
+    .panelInner{
+      padding: 18px 18px 18px 18px;
+      height: 100%;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .panelHead{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      user-select:none;
+    }
+    .panelHead .miniIcon{
+      width: 38px; height:38px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.9);
+      border: 1px solid rgba(17,24,39,.08);
+      display:flex; align-items:center; justify-content:center;
+      font-size: 18px;
+    }
+
+    .textBox{
+      flex:1;
+      overflow:auto;
+      padding-right: 6px;
+    }
+    .textBox p{
+      margin:0;
+      line-height: 1.65;
+      font-size: 17px;
+      color: #111827;
+      white-space: pre-wrap;
+    }
+
+    .dots{
+      display:flex;
+      gap:8px;
+      padding: 2px 0 0;
+      color: rgba(17,24,39,.28);
+      font-size: 12px;
+      letter-spacing: 4px;
+      user-select:none;
+    }
+
+    /* Watermarks (SVG) */
+    .wmTaiwan::before,
+    .wmVietnam::before{
+      content:"";
+      position:absolute;
+      left: 18px;
+      top: 18px;
+      width: 180px;
+      height: 120px;
+      opacity: .09;
+      pointer-events:none;
+      background-repeat:no-repeat;
+      background-size: contain;
+      filter: saturate(1.1);
+    }
+    .wmTaiwan::before{
+      background-image: url("data:image/svg+xml;utf8,\
+      <svg xmlns='http://www.w3.org/2000/svg' width='520' height='360'>\
+        <rect width='520' height='360' fill='%233b82f6'/>\
+        <circle cx='160' cy='120' r='64' fill='%23ffffff'/>\
+        <g fill='%233b82f6'>\
+          <circle cx='160' cy='120' r='36'/>\
+        </g>\
+        <g stroke='%23ffffff' stroke-width='10' stroke-linecap='round'>\
+          <line x1='160' y1='18' x2='160' y2='58'/>\
+          <line x1='160' y1='182' x2='160' y2='222'/>\
+          <line x1='58' y1='120' x2='98' y2='120'/>\
+          <line x1='222' y1='120' x2='262' y2='120'/>\
+          <line x1='92' y1='52' x2='120' y2='80'/>\
+          <line x1='200' y1='160' x2='228' y2='188'/>\
+          <line x1='92' y1='188' x2='120' y2='160'/>\
+          <line x1='200' y1='80' x2='228' y2='52'/>\
+        </g>\
+      </svg>");
+    }
+    .wmVietnam::before{
+      background-image: url("data:image/svg+xml;utf8,\
+      <svg xmlns='http://www.w3.org/2000/svg' width='520' height='360'>\
+        <rect width='520' height='360' fill='%23ef4444'/>\
+        <polygon points='260,78 292,170 390,170 310,228 338,318 260,262 182,318 210,228 130,170 228,170' fill='%23facc15'/>\
+      </svg>");
+    }
+
+    /* ===== Bottom record button ===== */
+    .recordArea{
+      position:absolute;
+      left: 0; right:0;
+      bottom: 0;
+      height: 120px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: linear-gradient(180deg, rgba(244,245,247,0) 0%, rgba(244,245,247,.85) 30%, rgba(244,245,247,1) 70%);
+    }
+
+    .recordBtn{
+      width: 86px; height: 86px;
+      border-radius: 999px;
+      border: 6px solid #fff;
+      background: var(--accent);
+      box-shadow: 0 18px 30px rgba(239,68,68,.28);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      position:relative;
+      outline:none;
+    }
+    .recordBtn::after{
+      content:"";
+      position:absolute;
+      inset:-10px;
+      border-radius:999px;
+      border: 2px solid rgba(239,68,68,.25);
+    }
+    .recordBtn svg{
+      width: 34px; height:34px;
+      fill:#fff;
+    }
+
+    .miniStatus{
+      position:absolute;
+      left: 14px;
+      bottom: 92px;
+      right: 14px;
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .badge{
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(17,24,39,.10);
+      background: rgba(255,255,255,.7);
+      box-shadow: 0 8px 16px rgba(17,24,39,.06);
+      white-space:nowrap;
+    }
+
+    /* ===== Drawer ===== */
+    .overlay{
+      position:absolute;
+      inset:0;
+      background: rgba(17,24,39,.35);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease;
+      z-index: 50;
+    }
+    .overlay.show{
+      opacity:1;
+      pointer-events:auto;
+    }
+
+    .drawer{
+      position:absolute;
+      top:0; bottom:0;
+      left:0;
+      width: var(--drawerW);
+      background:#fff;
+      border-right: 1px solid var(--line);
+      transform: translateX(-102%);
+      transition: transform .22s ease;
+      z-index: 60;
+      padding: 14px 14px 18px;
+      overflow:auto;
+    }
+    .drawer.show{
+      transform: translateX(0);
+    }
+    .drawerSection{
+      padding: 10px 10px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #fff;
+      margin-bottom: 14px;
+    }
+
+    .drawerRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .langBlock{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      cursor:pointer;
+      user-select:none;
+    }
+    .langLeft{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      font-weight: 700;
+    }
+    .flag{
+      width: 30px;
+      font-size: 22px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .chev{
+      width: 0; height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 7px solid #111827;
+      opacity:.7;
+    }
+
+    .swapCol{
+      display:flex;
+      justify-content:center;
+      padding: 10px 0;
+      color: var(--muted);
+      user-select:none;
+    }
+    .swapIcon{
+      width: 34px; height: 34px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+      background:#fff;
+    }
+
+    .dropdown{
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      display:none;
+      gap:8px;
+      flex-direction:column;
+    }
+    .dropdown.show{ display:flex; }
+
+    .dropItem{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      cursor:pointer;
+    }
+    .dropItem:hover{ background:#f3f4f6; }
+    .dropItem.active{
+      border-color: rgba(37,99,235,.35);
+      background: rgba(37,99,235,.08);
+    }
+
+    .topicHead{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight: 800;
+      font-size: 16px;
+      user-select:none;
+    }
+    .folderIcon{
+      width: 34px; height:34px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      display:flex; align-items:center; justify-content:center;
+      background:#fff;
+    }
+
+    .topicList{
+      margin-top: 10px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      max-height: 340px;
+      overflow:auto;
+      padding-right: 4px;
+    }
+    .topicItem{
+      padding: 10px 12px;
+      border-radius: 14px;
+      cursor:pointer;
+      border: 1px solid transparent;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .topicItem:hover{ background:#f3f4f6; }
+    .topicItem.active{
+      background: rgba(239,68,68,.08);
+      border-color: rgba(239,68,68,.22);
+    }
+    .topicName{
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space:nowrap;
+      max-width: 250px;
+      font-weight: 650;
+    }
+    .topicId{
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      background:#fff;
+      white-space:nowrap;
+    }
+
+    .newTopicBtn{
+      margin-top: 10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(17,24,39,.25);
+      background:#fff;
+      cursor:pointer;
+      color: #111827;
+      font-weight: 700;
+    }
+    .newTopicBtn:hover{ background:#f9fafb; }
+
+    .smallLabel{ font-size:12px; color: var(--muted); margin-bottom: 8px; }
+    .apiRow{ display:flex; gap:10px; }
+    .apiRow input{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background:#fff;
+      font-size: 14px;
+    }
+    .apiRow button{
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background:#111827;
+      color:#fff;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    /* scrollbar subtle */
+    ::-webkit-scrollbar{ width:10px; }
+    ::-webkit-scrollbar-thumb{ background: rgba(17,24,39,.12); border-radius: 999px; }
+    ::-webkit-scrollbar-track{ background: transparent; }
+
+    /* desktop preview (nếu anh mở trên màn hình lớn) */
+    @media (min-width: 1100px){
+      .phoneWrap{ max-width: 1180px; }
+      .phone{
+        min-height: 860px;
+        display:flex;
+        background: #fff;
+      }
+      .drawer{
+        position:relative;
+        transform:none;
+        width: 420px;
+        z-index: 1;
+        border-right: 1px solid var(--line);
+      }
+      .overlay{ display:none; }
+      .header .iconBtn{ visibility:hidden; }
+      .main{
+        flex:1;
+        height: auto;
+      }
+      .cards{
+        bottom: 140px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="phoneWrap">
+    <div class="phone">
+
+      <!-- overlay + drawer -->
+      <div class="overlay" id="overlay"></div>
+      <aside class="drawer" id="drawer">
+
+        <div class="drawerSection">
+          <div class="smallLabel">API Base URL</div>
+          <div class="apiRow">
+            <input id="baseUrl" value="http://127.0.0.1:8000" />
+            <button id="btnReload">Reload</button>
+          </div>
+          <div class="smallLabel" style="margin-top:8px;">
+            Endpoints: /api/new_topic • /api/record_history • /api/record_detail • /api/virecord
+          </div>
+        </div>
+
+        <div class="drawerSection">
+          <div class="langBlock" id="srcBlock">
+            <div class="langLeft">
+              <div class="flag" id="srcFlag">🇹🇼</div>
+              <div id="srcLabel">Chinese</div>
+            </div>
+            <div class="chev"></div>
+          </div>
+
+          <div class="swapCol">
+            <div class="swapIcon" id="btnSwap" title="Swap">
+              ⇅
+            </div>
+          </div>
+
+          <div class="langBlock" id="tgtBlock">
+            <div class="langLeft">
+              <div class="flag" id="tgtFlag">🇻🇳</div>
+              <div id="tgtLabel">Vietnamese</div>
+            </div>
+            <div class="chev"></div>
+          </div>
+
+          <div class="dropdown" id="langDropdown">
+            <div class="dropItem" data-lang="vi"><span class="flag">🇻🇳</span> Vietnamese</div>
+            <div class="dropItem" data-lang="zh"><span class="flag">🇹🇼</span> Chinese</div>
+            <div class="dropItem" data-lang="en"><span class="flag">🇺🇸</span> English</div>
+          </div>
+        </div>
+
+        <div class="drawerSection">
+          <div class="drawerRow">
+            <div class="topicHead">
+              <div class="folderIcon">📁</div>
+              Topic
+            </div>
+            <div class="chev" style="transform:rotate(0deg); opacity:.35;"></div>
+          </div>
+
+          <div class="topicList" id="topicList"></div>
+
+          <div class="newTopicBtn" id="btnNewTopic">
+            + New topic
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- header + main -->
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <header class="header">
+          <button class="iconBtn" id="btnMenu" aria-label="Menu">
+            <!-- sliders icon -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="7" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+              <circle cx="10" cy="6" r="2"></circle>
+              <circle cx="4" cy="12" r="2"></circle>
+              <circle cx="14" cy="18" r="2"></circle>
+            </svg>
+          </button>
+
+          <div class="title">
+            <span>ViRecord</span>
+          </div>
+
+          <div class="avatar" title="Profile">🐥</div>
+        </header>
+
+        <main class="main">
+          <div class="cards">
+
+            <!-- Top: Source -->
+            <section class="card cardTop wmTaiwan" id="srcCard">
+              <div class="panelInner">
+                <div class="panelHead">
+                  <div class="miniIcon">🗣️</div>
+                  <div>
+                    <div style="font-weight:800;color:#111827" id="srcTitle">Chinese</div>
+                    <div style="font-size:12px;">(Source)</div>
+                  </div>
+                </div>
+
+                <div class="textBox">
+                  <p id="srcText">—</p>
+                </div>
+
+                <div class="dots">○ ○ ○ ○ ○ ○ ○ ○ ○ ○</div>
+              </div>
+            </section>
+
+            <!-- Bottom: Target -->
+            <section class="card cardBottom wmVietnam" id="tgtCard">
+              <div class="panelInner">
+                <div class="panelHead">
+                  <div class="miniIcon">文A</div>
+                  <div>
+                    <div style="font-weight:800;color:#111827" id="tgtTitle">Vietnamese</div>
+                    <div style="font-size:12px;">(Target)</div>
+                  </div>
+                </div>
+
+                <div class="textBox">
+                  <p id="tgtText">—</p>
+                </div>
+
+                <div class="dots">○ ○ ○ ○ ○ ○ ○ ○ ○ ○</div>
+              </div>
+            </section>
+
+          </div>
+
+          <div class="miniStatus">
+            <div class="badge" id="topicBadge">Topic: (none)</div>
+            <div class="badge" id="statusBadge">idle</div>
+          </div>
+
+          <div class="recordArea">
+            <button class="recordBtn" id="btnRecord" aria-label="Record">
+              <svg id="micIcon" viewBox="0 0 24 24">
+                <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V20h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/>
+              </svg>
+            </button>
+          </div>
+
+        </main>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  // ======================
+  // API helpers
+  // ======================
+  const $ = (id) => document.getElementById(id);
+  const apiBase = () => ($("baseUrl").value || "").trim().replace(/\/+$/, "");
+  const endpoints = {
+    newTopic: () => apiBase() + "/api/new_topic",
+    history:  () => apiBase() + "/api/record_history",
+    detail:   (titleId) => apiBase() + "/api/record_detail?title_id=" + encodeURIComponent(titleId),
+    virecord: () => apiBase() + "/api/virecord",
+  };
+
+  function setStatus(text){
+    $("statusBadge").textContent = text;
+  }
+
+  // ======================
+  // Drawer open/close
+  // ======================
+  const drawer = $("drawer");
+  const overlay = $("overlay");
+  const openDrawer = () => { drawer.classList.add("show"); overlay.classList.add("show"); };
+  const closeDrawer = () => { drawer.classList.remove("show"); overlay.classList.remove("show"); };
+  $("btnMenu").addEventListener("click", openDrawer);
+  overlay.addEventListener("click", closeDrawer);
+
+  // ======================
+  // Languages UI
+  // ======================
+  const LANGS = {
+    vi: { label:"Vietnamese", flag:"🇻🇳" },
+    zh: { label:"Chinese", flag:"🇹🇼" }, // Traditional
+    en: { label:"English", flag:"🇺🇸" },
+  };
+
+  let sourceLang = "zh";
+  let targetLang = "vi";
+  let choosing = "src"; // src|tgt
+
+  function applyLangUI(){
+    $("srcLabel").textContent = LANGS[sourceLang].label;
+    $("srcFlag").textContent  = LANGS[sourceLang].flag;
+    $("tgtLabel").textContent = LANGS[targetLang].label;
+    $("tgtFlag").textContent  = LANGS[targetLang].flag;
+
+    $("srcTitle").textContent = LANGS[sourceLang].label;
+    $("tgtTitle").textContent = LANGS[targetLang].label;
+
+    // watermark / tone: top = Taiwan-ish, bottom = Vietnam-ish (giống ảnh)
+    // (Nếu anh muốn đổi watermark theo ngôn ngữ thật, em đổi tiếp được.)
+  }
+
+  const langDropdown = $("langDropdown");
+  const toggleDropdown = () => langDropdown.classList.toggle("show");
+
+  $("srcBlock").addEventListener("click", () => {
+    choosing = "src";
+    toggleDropdown();
+  });
+  $("tgtBlock").addEventListener("click", () => {
+    choosing = "tgt";
+    toggleDropdown();
+  });
+
+  $("btnSwap").addEventListener("click", () => {
+    const tmp = sourceLang;
+    sourceLang = targetLang;
+    targetLang = tmp;
+    applyLangUI();
+  });
+
+  langDropdown.querySelectorAll(".dropItem").forEach(item => {
+    item.addEventListener("click", () => {
+      const lang = item.dataset.lang;
+      if (choosing === "src") sourceLang = lang;
+      else targetLang = lang;
+      applyLangUI();
+      langDropdown.classList.remove("show");
+    });
+  });
+
+  // ======================
+  // Topics: load history + select + new topic
+  // ======================
+  let topics = []; // [{title_id,title_name}]
+  let activeTitleId = null;
+  let activeTitleName = null;
+
+  function renderTopics(){
+    const list = $("topicList");
+    list.innerHTML = "";
+
+    if (!topics.length){
+      const div = document.createElement("div");
+      div.style.padding = "10px 12px";
+      div.style.color = "#6b7280";
+      div.textContent = "No topics yet.";
+      list.appendChild(div);
+      return;
+    }
+
+    topics.forEach(t => {
+      const row = document.createElement("div");
+      row.className = "topicItem" + (String(t.title_id) === String(activeTitleId) ? " active" : "");
+      row.innerHTML = `
+        <div class="topicName">${escapeHtml(t.title_name || "")}</div>
+        <div class="topicId">#${t.title_id}</div>
+      `;
+      row.addEventListener("click", async () => {
+        activeTitleId = t.title_id;
+        activeTitleName = t.title_name;
+        $("topicBadge").textContent = "Topic: " + activeTitleName;
+        renderTopics();
+        closeDrawer();
+        await loadDetail(activeTitleId);
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  async function loadHistory(){
+    setStatus("loading topics...");
+    const r = await fetch(endpoints.history());
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error("History HTTP " + r.status);
+
+    topics = Array.isArray(data.titles) ? data.titles : [];
+    // auto select first if none
+    if (!activeTitleId && topics.length){
+      activeTitleId = topics[0].title_id;
+      activeTitleName = topics[0].title_name;
+      $("topicBadge").textContent = "Topic: " + activeTitleName;
+    }
+    renderTopics();
+    setStatus("idle");
+
+    // load detail for active
+    if (activeTitleId) await loadDetail(activeTitleId);
+  }
+
+  async function createTopic(titleName){
+    setStatus("creating topic...");
+    const r = await fetch(endpoints.newTopic(), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ title_name: titleName })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error("New topic HTTP " + r.status);
+
+    // backend expected: {ok:true,title_id,title_name}
+    activeTitleId = data.title_id;
+    activeTitleName = data.title_name;
+    $("topicBadge").textContent = "Topic: " + activeTitleName;
+
+    await loadHistory();
+    setStatus("idle");
+    return data;
+  }
+
+  async function loadDetail(titleId){
+    if (!titleId) return;
+    setStatus("loading detail...");
+    const r = await fetch(endpoints.detail(titleId));
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error("Detail HTTP " + r.status);
+
+    // expected: {title_id,title_name,original_text,translated_text} (anh đang dùng)
+    if (data.title_name) {
+      activeTitleName = data.title_name;
+      $("topicBadge").textContent = "Topic: " + activeTitleName;
+    }
+    $("srcText").textContent = data.translated_text || "—";   // trên ảnh top là Chinese
+    $("tgtText").textContent = data.original_text   || "—";   // dưới là Vietnamese
+    setStatus("idle");
+  }
+
+  $("btnReload").addEventListener("click", async () => {
+    try { await loadHistory(); }
+    catch(e){ setStatus("ERR: " + e.message); }
+  });
+
+  $("btnNewTopic").addEventListener("click", async () => {
+    const name = prompt("New topic name:");
+    if (!name) return;
+    try{
+      await createTopic(name.trim());
+      closeDrawer();
+    }catch(e){
+      alert("Create topic failed: " + e.message);
+      setStatus("idle");
+    }
+  });
+
+  // ======================
+  // Recording + send to /api/virecord (multipart/form-data)
+  // ======================
+  let mediaRecorder = null;
+  let chunks = [];
+  let isRecording = false;
+
+  function setMicState(recording){
+    isRecording = recording;
+    $("btnRecord").style.background = recording ? "#dc2626" : "var(--accent)";
+    $("btnRecord").style.boxShadow = recording ? "0 18px 30px rgba(220,38,38,.30)" : "0 18px 30px rgba(239,68,68,.28)";
+  }
+
+  async function startRecording(){
+    if (isRecording) return;
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    const options = {};
+    if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) options.mimeType = "audio/webm;codecs=opus";
+    else if (MediaRecorder.isTypeSupported("audio/webm")) options.mimeType = "audio/webm";
+    else if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) options.mimeType = "audio/ogg;codecs=opus";
+
+    chunks = [];
+    mediaRecorder = new MediaRecorder(stream, options);
+
+    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size>0) chunks.push(e.data); };
+
+    mediaRecorder.onstop = async () => {
+      try{
+        const mime = mediaRecorder.mimeType || "audio/webm";
+        const blob = new Blob(chunks, { type:mime });
+
+        // stop tracks
+        stream.getTracks().forEach(t => t.stop());
+
+        // auto-send (giống “bấm mic xong nó gửi”)
+        await sendAudio(blob);
+      }catch(e){
+        setStatus("ERR: " + e.message);
+      }
+    };
+
+    mediaRecorder.start();
+    setMicState(true);
+    setStatus("recording...");
+  }
+
+  function stopRecording(){
+    if (!mediaRecorder || mediaRecorder.state === "inactive") return;
+    mediaRecorder.stop();
+    setMicState(false);
+    setStatus("sending...");
+  }
+
+  async function sendAudio(blob){
+    if (!activeTitleName) activeTitleName = "untitled";
+
+    // BE của anh đang dùng SUPPORTED_LANGS={"vi","en","zh"}
+    // và stt_from_audio_file(language=source_language)
+    // UI ảnh là Chinese<->Vietnamese: top Chinese, bottom Vietnamese
+    // => source = vi (anh nói tiếng Việt), target = zh (dịch ra Chinese)
+    // Nhưng anh có thể chọn khác, nên map:
+    const beSource = (targetLang === "zh" && sourceLang === "vi") ? "vi" : (sourceLang === "Chinese" ? "zh" : sourceLang);
+    // thực tế: anh muốn dropdown quyết định
+    // => source_language = (tgtTitle dưới) hoặc (anh đang dùng: source_language=dropdown Source)
+    // em giữ đơn giản: source_language = (dropdown dưới trong drawer - srcBlock) và target_language = tgtBlock
+    const source_language = (sourceLang in LANGS) ? sourceLang : "vi";
+    const target_language = (targetLang in LANGS) ? targetLang : "zh";
+
+    // file ext
+    let ext = "webm";
+    if (blob.type.includes("ogg")) ext = "ogg";
+
+    const fd = new FormData();
+    fd.append("audio", blob, "record."+ext);
+
+    // anh đang hỗ trợ: title_id (optional) + title_name
+    if (activeTitleId) fd.append("title_id", String(activeTitleId));
+    fd.append("title_name", activeTitleName);
+
+    fd.append("source_language", source_language);
+    fd.append("target_language", target_language);
+
+    const r = await fetch(endpoints.virecord(), { method:"POST", body: fd });
+    const text = await r.text();
+    let data = {};
+    try{ data = JSON.parse(text); } catch { data = { raw:text }; }
+
+    if (!r.ok){
+      setStatus("ERR HTTP " + r.status);
+      return;
+    }
+
+    // backend trả: {ok,true,title_id,title_name,original_text,translated_text}
+    if (data.title_id){
+      activeTitleId = data.title_id;
+      activeTitleName = data.title_name || activeTitleName;
+      $("topicBadge").textContent = "Topic: " + activeTitleName;
+    }
+
+    // theo ảnh: top = Chinese, bottom = Vietnamese
+    // backend: original_text = tiếng nói (vi), translated_text = dịch (zh)
+    $("srcText").textContent = data.translated_text || "—";
+    $("tgtText").textContent = data.original_text || "—";
+
+    setStatus("done");
+
+    // refresh topics list
+    try{ await loadHistory(); } catch {}
+  }
+
+  $("btnRecord").addEventListener("click", async () => {
+    try{
+      if (!isRecording){
+        await startRecording();
+      }else{
+        stopRecording();
+      }
+    }catch(e){
+      setStatus("ERR: " + e.message);
+      setMicState(false);
+    }
+  });
+
+  // ======================
+  // init
+  // ======================
+  applyLangUI();
+  $("topicBadge").textContent = "Topic: (none)";
+  $("srcText").textContent = "—";
+  $("tgtText").textContent = "—";
+  setStatus("idle");
+
+  // load topics on start
+  loadHistory().catch(e => setStatus("ERR: " + e.message));
+</script>
+</body>
+</html>

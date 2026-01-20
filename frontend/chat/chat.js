@@ -1,32 +1,34 @@
-const URL = "http://127.0.0.1:8000" ; 
-const API_URL = URL + "/api/chat";
-const LIST_API = URL +"/api/conversations";
-const DETAIL_API_BASE = URL +"/api/conversations";
-const CREATE_API = URL +"/api/creatnew";
-const DELETE_API_BASE = URL +"/api/delete_conversations";
+const URL = "http://127.0.0.1:8000";
+const API_URL = URL + "/api/chat";                 // (không dùng nữa cho chat, giữ lại nếu anh cần fallback)
+const LIST_API = URL + "/api/conversations";
+const DETAIL_API_BASE = URL + "/api/conversations";
+const CREATE_API = URL + "/api/creatnew";
+const DELETE_API_BASE = URL + "/api/delete_conversations";
+
+// ================= WS CONFIG =================
+const WS_URL = (() => {
+  // Tự chuyển http -> ws
+  if (URL.startsWith("https://")) return "wss://" + URL.slice(8) + "/ws/vichat/";
+  if (URL.startsWith("http://"))  return "ws://"  + URL.slice(7) + "/ws/vichat/";
+  return "ws://127.0.0.1:8000/ws/vichat/";
+})();
+
+let ws = null;
+let wsReadyPromise = null;
 
 let currentConversationId = null;
 
+// stream state
+let currentAssistantEl = null;
+let pendingUserTextForCreate = null;
 
-/* ================= RANDOM WELLCOMEMASSAGE ================= */
+// ================= RANDOM WELLCOMEMASSAGE =================
 const welcomeMessages = [
-  {
-    title: "Hello !",
-    subtitle: "What would you like to do today ?"
-  },
-  {
-    title: "Welcome to ViChat !",
-    subtitle: "Where should we start?"
-  },
-  {
-    title: "Ready when you are !",
-    subtitle: "Ask me anything."
-  },
-  {
-    title: "Is there anything we can help you with ?",
-    subtitle: "We are here to assist you."
-  }
-]; 
+  { title: "Hello !", subtitle: "What would you like to do today ?" },
+  { title: "Welcome to ViChat !", subtitle: "Where should we start?" },
+  { title: "Ready when you are !", subtitle: "Ask me anything." },
+  { title: "Is there anything we can help you with ?", subtitle: "We are here to assist you." }
+];
 
 window.addEventListener("DOMContentLoaded", () => {
   const welcome = document.getElementById("welcomeScreen");
@@ -37,11 +39,10 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-/* ================= HIEU UNG RANDOM WELLCOMEMASSAGE ================= */
+// ================= HIEU UNG RANDOM WELLCOMEMASSAGE =================
 let typingTimers = new WeakMap();
 
 function typeText(el, text, speed = 35) {
-  // nếu element này đang gõ → dừng nó
   if (typingTimers.has(el)) {
     clearInterval(typingTimers.get(el));
   }
@@ -64,8 +65,6 @@ function typeText(el, text, speed = 35) {
   typingTimers.set(el, timer);
 }
 
-
-
 function showRandomWelcome() {
   const pick = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
 
@@ -73,11 +72,9 @@ function showRandomWelcome() {
   const titleEl = document.getElementById("welcomeTitle");
   const subEl = document.getElementById("welcomeSubtitle");
 
-  // reset
   welcome.classList.remove("show");
   subEl.style.opacity = 0;
 
-  // trigger animation
   requestAnimationFrame(() => {
     welcome.classList.add("show");
     typeText(titleEl, pick.title);
@@ -88,23 +85,102 @@ function showRandomWelcome() {
   });
 }
 
+// ================= WS HELPERS =================
+function ensureWS() {
+  if (ws && ws.readyState === WebSocket.OPEN) return Promise.resolve(true);
 
-/* ================= SEND MESSAGE ================= */
+  // nếu đang CONNECTING thì trả promise cũ
+  if (ws && ws.readyState === WebSocket.CONNECTING && wsReadyPromise) return wsReadyPromise;
 
+  wsReadyPromise = new Promise((resolve, reject) => {
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => resolve(true);
+
+    ws.onerror = (e) => {
+      console.error("WS error", e);
+      reject(e);
+    };
+
+    ws.onclose = (e) => {
+      console.warn("WS closed", e.code, e.reason);
+      // reset để lần sau ensureWS() sẽ connect lại
+      ws = null;
+      wsReadyPromise = null;
+    };
+
+    ws.onmessage = (ev) => {
+      let msg = null;
+      try {
+        msg = JSON.parse(ev.data);
+      } catch (e) {
+        console.error("WS message parse error:", e);
+        return;
+      }
+
+      // ===== Protocol =====
+      if (msg.type === "ws.connected") {
+        return;
+      }
+
+      if (msg.type === "chat.start") {
+        // tạo bubble assistant rỗng để fill token
+        hideTyping();
+        currentAssistantEl = addMessageReturnEl("", "assistant");
+        return;
+      }
+
+      if (msg.type === "chat.delta") {
+        if (!currentAssistantEl) {
+          currentAssistantEl = addMessageReturnEl("", "assistant");
+        }
+        // append “từng chữ/từng chunk”
+        currentAssistantEl.textContent += (msg.text_delta || "");
+        scrollToBottom();
+        return;
+      }
+
+      if (msg.type === "chat.done") {
+        hideTyping();
+        currentAssistantEl = null;
+        return;
+      }
+
+      if (msg.type === "chat.error") {
+        console.error("WS chat error:", msg.error);
+        hideTyping();
+        currentAssistantEl = null;
+        addMessage("⚠️ " + (msg.error || "Server error"), "assistant");
+        return;
+      }
+    };
+  });
+
+  return wsReadyPromise;
+}
+
+function wsSend(obj) {
+  return ensureWS().then(() => {
+    ws.send(JSON.stringify(obj));
+  });
+}
+
+// ================= SEND MESSAGE =================
 async function sendMessage() {
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text) return;
-  
-   //  hide welcome khi bắt đầu chat
+
+  // hide welcome khi bắt đầu chat
   document.getElementById("welcomeScreen").style.display = "none";
 
-  // 1) UI: hiển thị user trước (giống hệt code cũ)
+  // 1) UI: show user trước
   addMessage(text, "user");
   input.value = "";
   showTyping();
+
   try {
-    // 2) Nếu là New Chat (chưa có id) -> tạo hội thoại mới trước
+    // 2) Nếu New Chat -> tạo conversation bằng HTTP (giữ nguyên logic backend)
     if (currentConversationId === null) {
       const createRes = await fetch(CREATE_API, {
         method: "POST",
@@ -117,34 +193,35 @@ async function sendMessage() {
         throw new Error(`HTTP ${createRes.status}: ${errText}`);
       }
 
-      const created = await createRes.json(); // { conversation_id, title }
+      const created = await createRes.json(); // { conversation_id, title, message: {..assistant..} }
       currentConversationId = created.conversation_id;
 
-      // cập nhật history (không chặn luồng chat)
+      // cập nhật title luôn (nếu backend trả)
+      setPageTitle(created.title || "");
+
+      // cập nhật history (không chặn luồng)
       loadHistory().catch(console.error);
+
+      // IMPORTANT:
+      // Backend create_conversation của anh đã tạo assistant message rồi.
+      // Nếu anh muốn UI hiện assistant của create luôn (không cần WS):
+      if (created.message && created.message.content) {
+        hideTyping();
+        addMessage(created.message.content, "assistant");
+      } else {
+        hideTyping();
+      }
+      return; // đã xử lý xong ở create_conversation
     }
 
-    // 3) Chat bình thường (giống code cũ, chỉ thay id)
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversation_id: currentConversationId,
-        role: "user",
-        message: text
-      })
+    // 3) Chat bình thường -> dùng WS stream
+    await wsSend({
+      type: "chat.send",
+      conversation_id: currentConversationId,
+      message: text
     });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`HTTP ${res.status}: ${errText}`);
-    }
-
-    const data = await res.json();
-    const aiMsg = data.message;
-    hideTyping();
-    // 4) UI: hiển thị bot (giống hệt code cũ)
-    addMessage(aiMsg.content, aiMsg.role);
+    // NOTE: phần render assistant sẽ được WS onmessage xử lý (chat.start/delta/done)
 
   } catch (err) {
     console.error(err);
@@ -153,20 +230,34 @@ async function sendMessage() {
   }
 }
 
-
-/* ================= MESSAGE UI ================= Hàm này dùng để hiển thị tin nhắn  */
+// ================= MESSAGE UI =================
 function addMessage(text, type) {
-  const container = document.querySelector(".chat-container"); // lấy container
-
+  const container = document.querySelector(".chat-container");
   const div = document.createElement("div");
   div.className = type;
-  div.innerText = text;       // style cho từng role 
-
-  container.appendChild(div);  //Gắn message mới vào cuối danh sách
-  container.parentElement.scrollTop = container.parentElement.scrollHeight; // tự động kéo màn hình xuống tin nhắn mới nhất
+  div.innerText = text;
+  container.appendChild(div);
+  scrollToBottom();
 }
 
-/* ================= SIDEBAR =================  Thái sửa lại đoạn này code cho a  đây là phần lịch sử đó */
+// trả về element để append dần token
+function addMessageReturnEl(text, type) {
+  const container = document.querySelector(".chat-container");
+  const div = document.createElement("div");
+  div.className = type;
+  div.innerText = text || "";
+  container.appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
+function scrollToBottom() {
+  const container = document.querySelector(".chat-container");
+  if (!container) return;
+  container.parentElement.scrollTop = container.parentElement.scrollHeight;
+}
+
+// ================= SIDEBAR =================
 const menuBtn = document.getElementById("menuBtn");
 const app = document.querySelector(".app");
 
@@ -174,11 +265,12 @@ menuBtn.addEventListener("click", () => {
   app.classList.toggle("sidebar-open");
 });
 
-/* ================= EVENTS Khi ấn nút gửi  =================  */
-document.getElementById("sendBtn").addEventListener("click", sendMessage); // Nếu ấn vào nút sendBTn thì đưa tin nhắn vào hàm sendMessgae
-document.getElementById("input").addEventListener("keydown", (e) => {     //  Tương tự nhưng là ấn nút enter
+// ================= EVENTS =================
+document.getElementById("sendBtn").addEventListener("click", sendMessage);
+document.getElementById("input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage();
 });
+
 function showTyping() {
   const container = document.querySelector(".chat-container");
 
@@ -191,48 +283,44 @@ function showTyping() {
   `;
 
   container.appendChild(div);
-  container.parentElement.scrollTop = container.parentElement.scrollHeight;
+  scrollToBottom();
 }
+
 function hideTyping() {
   const el = document.getElementById("typing-indicator");
   if (el) el.remove();
 }
 
-/* ================= NEW CHAT ================= */
+// ================= NEW CHAT =================
 const newChatBtn = document.getElementById("newChatBtn");
 
 newChatBtn.addEventListener("click", () => {
-  // reset trạng thái
   currentConversationId = null;
+  currentAssistantEl = null;
 
-  // xoá UI chat
   const container = document.querySelector(".chat-container");
   container.innerHTML = "";
 
-  // bật welcome screen
   const welcome = document.getElementById("welcomeScreen");
   welcome.style.display = "flex";
 
-  // random lại câu chào
   showRandomWelcome();
 
-  setPageTitle(""); 
-  // focus input
+  setPageTitle("");
+
   const input = document.getElementById("input");
   input.value = "";
   input.focus();
 
-  // (tuỳ chọn) bỏ active history
   document
     .querySelectorAll(".history li.active")
     .forEach(li => li.classList.remove("active"));
 });
 
-
-
-/* ================= HISTORY LIST ================= */
+// ================= HISTORY LIST =================
 const historyUl = document.querySelector(".history");
-/* ================= CONFIRM DELETE MODAL (UI) ================= */
+
+// ================= CONFIRM DELETE MODAL (UI) =================
 const confirmOverlay = document.getElementById("confirmOverlay");
 const confirmOkBtn = document.getElementById("confirmOk");
 const confirmCancelBtn = document.getElementById("confirmCancel");
@@ -245,7 +333,6 @@ function openConfirmModal({
   title = "Delete conversation?",
   desc = "This action cannot be undone."
 } = {}) {
-  // fallback nếu HTML chưa có modal
   if (!confirmOverlay) return Promise.resolve(window.confirm(title));
 
   if (confirmTitleEl) confirmTitleEl.textContent = title;
@@ -272,24 +359,20 @@ function closeConfirmModal(result) {
   }
 }
 
-// Buttons
 if (confirmOkBtn) confirmOkBtn.addEventListener("click", () => closeConfirmModal(true));
 if (confirmCancelBtn) confirmCancelBtn.addEventListener("click", () => closeConfirmModal(false));
 
-// Click outside to close
 if (confirmOverlay) {
   confirmOverlay.addEventListener("click", (e) => {
     if (e.target === confirmOverlay) closeConfirmModal(false);
   });
 }
 
-// ESC to close
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && confirmOverlay && confirmOverlay.classList.contains("show")) {
     closeConfirmModal(false);
   }
 });
-
 
 async function loadHistory() {
   try {
@@ -301,7 +384,6 @@ async function loadHistory() {
 
     historyUl.innerHTML = "";
 
-    // ✅ 1 listener duy nhất: click ra ngoài thì đóng mọi menu đang mở
     if (!window.__historyOutsideClickBound) {
       document.addEventListener("click", () => {
         document
@@ -315,26 +397,21 @@ async function loadHistory() {
       const li = document.createElement("li");
       li.dataset.conversationId = c.conversation_id;
 
-      // title
       const titleSpan = document.createElement("span");
       titleSpan.textContent = c.title || `Conversation ${c.conversation_id}`;
       titleSpan.className = "history-title-text";
 
-      // click load conversation
       titleSpan.addEventListener("click", () => {
         loadConversationDetail(c.conversation_id);
-
         setPageTitle(c.title || `Conversation ${c.conversation_id}`);
 
         document
-        .querySelectorAll(".history li.active")
-        .forEach(x => x.classList.remove("active"));
+          .querySelectorAll(".history li.active")
+          .forEach(x => x.classList.remove("active"));
 
         li.classList.add("active");
       });
 
-
-      /* ================= UI DELETE: 3 dots + menu ================= */
       const actions = document.createElement("div");
       actions.className = "history-actions";
 
@@ -355,11 +432,9 @@ async function loadHistory() {
       actions.appendChild(moreBtn);
       actions.appendChild(menu);
 
-      // open / close menu (không cho click lan ra ngoài)
       moreBtn.addEventListener("click", (e) => {
         e.stopPropagation();
 
-        // đóng menu khác trước
         document
           .querySelectorAll(".history-actions.open")
           .forEach(el => {
@@ -369,7 +444,6 @@ async function loadHistory() {
         actions.classList.toggle("open");
       });
 
-      // click delete
       delItem.addEventListener("click", async (e) => {
         e.stopPropagation();
         actions.classList.remove("open");
@@ -398,12 +472,11 @@ async function loadHistory() {
             return;
           }
 
-          // ✅ xoá khỏi UI ngay
           li.remove();
 
-          // nếu đang mở đúng chat bị xoá
           if (String(currentConversationId) === String(c.conversation_id)) {
             currentConversationId = null;
+            currentAssistantEl = null;
             document.querySelector(".chat-container").innerHTML = "";
           }
 
@@ -413,7 +486,6 @@ async function loadHistory() {
         }
       });
 
-      /* ================= append ================= */
       li.appendChild(titleSpan);
       li.appendChild(actions);
       historyUl.appendChild(li);
@@ -425,19 +497,12 @@ async function loadHistory() {
   }
 }
 
-
-
 // gọi ngay khi load trang
 loadHistory();
 
-
-
-
-
-/* ================= LOAD CONVERSATION DETAIL ================= */
+// ================= LOAD CONVERSATION DETAIL =================
 async function loadConversationDetail(conversationId) {
   try {
-     //  hide welcome khi mở chat cũ
     document.getElementById("welcomeScreen").style.display = "none";
 
     const res = await fetch(`${DETAIL_API_BASE}/${conversationId}`);
@@ -449,14 +514,12 @@ async function loadConversationDetail(conversationId) {
     const data = await res.json();
     const messages = data.messages || [];
 
-    // set trạng thái hiện tại
     currentConversationId = data.conversation_id;
+    currentAssistantEl = null;
 
-    // clear UI chat
     const container = document.querySelector(".chat-container");
     container.innerHTML = "";
 
-    // render messages
     messages.forEach(m => {
       addMessage(m.content, m.role);
     });
@@ -466,32 +529,27 @@ async function loadConversationDetail(conversationId) {
   }
 }
 
-
-
-
+// ================= DELETE (unused helper) =================
 async function deleteConversation(conversationId) {
   try {
-    const res = await fetch(`${DELETE_API_BASE}/${conversationId}/`, {
-      method: "DELETE"
-    });
+    const res = await fetch(`${DELETE_API_BASE}/${conversationId}/`, { method: "DELETE" });
 
     if (!res.ok) {
       const errText = await res.text();
       throw new Error(`HTTP ${res.status}: ${errText}`);
     }
 
-    const data = await res.json(); // { success: true }
+    const data = await res.json();
     if (!data.success) throw new Error("Delete failed");
 
-    // Nếu đang mở đúng chat bị xoá → reset UI
     if (String(currentConversationId) === String(conversationId)) {
       currentConversationId = null;
+      currentAssistantEl = null;
       document.querySelector(".chat-container").innerHTML = "";
       document.getElementById("input").value = "";
       setPageTitle("");
     }
 
-    // Reload history
     await loadHistory();
 
   } catch (err) {
@@ -507,4 +565,7 @@ function setPageTitle(chatTitle = "") {
     document.title = "ViChat";
   }
 }
- 
+
+// ================= OPTIONAL: connect WS early =================
+// Nếu muốn WS luôn sẵn (mở trang là connect), bật dòng dưới:
+ensureWS().catch(() => {});

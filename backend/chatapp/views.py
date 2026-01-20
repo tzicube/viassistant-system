@@ -10,7 +10,7 @@ from config.settings import OLLAMA_URL, OLLAMA_MODEL
 from .memory import get_history_messages, format_app_memory_text, set_app_memory
 from django.views.decorators.http import require_POST
 
-# reuse HTTP connection (keep-alive)
+# ✅ reuse HTTP connection (keep-alive)
 _http = requests.Session()
 
 def save_message(conversation_id: int, role: str, content: str) -> Conversation:
@@ -248,56 +248,59 @@ def chat_stream(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
-    try:
-        data = json.loads(request.body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
-
+    data = json.loads(request.body or "{}")
     conversation_id = data.get("conversation_id")
     user_text = (data.get("message") or "").strip()
 
-    if not conversation_id or not user_text:
-        return JsonResponse({"error": "Missing conversation_id or message"}, status=400)
+    if not conversation_id:
+        return JsonResponse({"error": "conversation_id is required"}, status=400)
+    if not user_text:
+        return JsonResponse({"error": "message is required"}, status=400)
 
-    # 1) Lưu tin nhắn của User trước
+    # 1) lưu user message
     conv = save_message(conversation_id, "user", user_text)
 
-    # Chuẩn bị dữ liệu gửi cho Ollama
     system_prompt = getattr(settings, "AI_SYSTEM_PROMPT", "You are a helpful assistant.")
+
+    # ✅ GIỮ NGUYÊN theo ý anh (assistant prompt)
     app_memory_text = format_app_memory_text()
     history = get_history_messages(conv.id)
 
-    messages = [{"role": "assistant", "content": system_prompt}]
+    messages = []
+    messages.append({"role": "assistant", "content": system_prompt})
+
     if app_memory_text.strip():
         messages.append({"role": "assistant", "content": app_memory_text})
+
     messages.extend(history)
 
-    # Đảm bảo câu hỏi hiện tại nằm cuối danh sách
-    if not history or history[-1].get("content") != user_text:
+    if not history or history[-1].get("role") != "user" or history[-1].get("content") != user_text:
         messages.append({"role": "user", "content": user_text})
 
+
     def event_stream():
-        full_response = []
+        full = []
         try:
-            # 2) Stream từng chữ từ Ollama
+            # 2) stream token ra dần
             for chunk in ollama_stream(messages):
-                full_response.append(chunk)
-                # Gửi thẳng text về client, không cần bọc "data:" để JS đọc nhanh hơn
-                yield chunk 
+                full.append(chunk)
+                # SSE format
+                yield f"data: {chunk}\n\n"
 
-            # 3) KHI STREAM XONG: Lưu toàn bộ câu trả lời vào DB
-            complete_text = "".join(full_response).strip()
-            if complete_text:
-                save_message(conv.id, "assistant", complete_text)
-                
+            # 3) lưu assistant message sau khi xong
+            assistant_text = "".join(full).strip() or "No response."
+            save_message(conv.id, "assistant", assistant_text)
+
+            yield "event: done\ndata: [DONE]\n\n"
+
         except Exception as e:
-            yield f"\n[Error]: {str(e)}"
+            yield f"event: error\ndata: {str(e)}\n\n"
 
-    # Quan trọng: content_type là text/plain để JS đọc luồng dễ dàng
-    response = StreamingHttpResponse(event_stream(), content_type="text/plain")
-    response["X-Accel-Buffering"] = "no"  # Tắt buffer của Nginx/Proxy nếu có
-    response["Cache-Control"] = "no-cache"
-    return response
+    resp = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    resp["Cache-Control"] = "no-cache"
+    resp["X-Accel-Buffering"] = "no"
+    return resp
+
 
 @csrf_exempt
 @require_POST
