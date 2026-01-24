@@ -1,39 +1,21 @@
-:root {
-  --bg: #ffffff;
-  --line: #e9e9ee;
-  --text: #111;
-  --muted: #777;
+/* =========================================================
+   ViRecord UI (HTML/CSS only)
+   - Không chứa JS
+   - Có sẵn class/id để JS/backend rót dữ liệu từ API
+   ========================================================= */
 
-  --cool: #e9ebf6; /* lavender */
-  --warm: #f7dede; /* pink */
-  --shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
-
-  --radius: 14px;
-  --topbar-h: 70px;
-
-  --drawer-w: min(72vw, 360px);
-
-  /* Added */
-  --chip: rgba(0, 0, 0, 0.06);
-  --chip-strong: rgba(0, 0, 0, 0.12);
-  --danger: #ff2b2b;
-  --ok: #1aa35b;
-  --warn: #d98a00;
-}
-
-* {
+/* ---------- Reset nhẹ ---------- */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
-
 html,
 body {
   height: 100%;
 }
-
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
   font-family:
     system-ui,
     -apple-system,
@@ -41,39 +23,49 @@ body {
     Roboto,
     Arial,
     sans-serif;
+  color: #111;
+  background: #fff;
 }
 
-button,
-select,
-textarea,
-input {
-  font-family: inherit;
+/* ---------- Theme variables ---------- */
+:root {
+  /* Kích thước */
+  --topbar-h: 64px;
+  --micbar-h: 110px;
+
+  /* Drawer */
+  --drawer-w: min(65vw, 360px);
+
+  /* Màu pastel giống ảnh */
+  --panel-pink: #f6dfe1;
+  --panel-blue: #dfe3f5;
+  --divider: rgba(0, 0, 0, 0.35);
+
+  /* Accent */
+  --accent-red: #ff2b2b;
+
+  /* Bo góc / shadow */
+  --radius: 14px;
 }
 
-/* Focus (a11y) */
-button:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-input:focus-visible {
-  outline: 3px solid rgba(0, 0, 0, 0.25);
-  outline-offset: 3px;
-}
-
-/* APP */
+/* =========================================================
+   APP LAYOUT
+   ========================================================= */
 .app {
-  height: 100vh;
-  display: grid;
-  grid-template-rows: var(--topbar-h) 1fr auto;
-  background: var(--bg);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* TOPBAR */
+/* ---------- TOP BAR ---------- */
 .topbar {
+  height: var(--topbar-h);
+  padding: calc(env(safe-area-inset-top) * 0.6) 16px 10px;
   display: grid;
-  grid-template-columns: 64px 1fr 64px;
+  grid-template-columns: 44px 1fr 44px;
   align-items: center;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--line);
+  background: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .icon-btn {
@@ -86,883 +78,506 @@ input:focus-visible {
   place-items: center;
   cursor: pointer;
 }
-.icon-btn svg {
-  width: 28px;
-  height: 28px;
+.icon-btn:active {
+  transform: scale(0.98);
+}
+.icon {
+  width: 26px;
+  height: 26px;
   color: #111;
 }
 
 .brand {
-  display: grid;
-  place-items: center;
-  gap: 6px;
-  pointer-events: none;
-}
-.brand__title {
-  font-size: 22px;
-  font-weight: 800;
+  text-align: center;
+  font-weight: 700;
   letter-spacing: 0.2px;
 }
-
-/* STATUS CHIP (Idle / Recording / Processing / Done / Error) */
-.status-chip {
-  pointer-events: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--chip);
-  border: 1px solid var(--chip-strong);
-  color: #111;
-}
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-}
-.status-chip[data-state="recording"] .status-dot {
-  background: var(--danger);
-}
-.status-chip[data-state="processing"] .status-dot {
-  background: var(--warn);
-}
-.status-chip[data-state="done"] .status-dot {
-  background: var(--ok);
-}
-.status-chip[data-state="error"] .status-dot {
-  background: var(--danger);
+.brand-text {
+  display: inline-block;
 }
 
-.avatar-btn {
-  width: 44px;
-  height: 44px;
-  border: 0;
-  background: transparent;
+.brand-right {
+  display: grid;
+  place-items: center;
+}
+.avatar {
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  position: relative;
-  cursor: pointer;
-}
-.avatar {
-  font-size: 26px;
-  line-height: 1;
-}
-.avatar-hat {
-  position: absolute;
-  top: 2px;
-  right: 6px;
-  font-size: 14px;
-  transform: rotate(10deg);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 18px;
 }
 
-/* DRAWER */
-.drawer-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 180ms ease;
+/* ---------- STAGE: Drawer + Content ---------- */
+.stage {
+  /* Chiếm toàn bộ phần còn lại, micbar fixed nên content sẽ có spacer */
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
 }
-.drawer-wrap.is-open {
-  pointer-events: auto;
+
+/* Divider dọc giữa drawer và content (giống ảnh 1) */
+.split-divider {
+  width: 1px;
+  background: var(--divider);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+/* =========================================================
+   DRAWER (push style)
+   - Mặc định đóng: width = 0
+   - Khi body.drawer-open: width = --drawer-w
+   ========================================================= */
+.drawer {
+  width: 0;
+  overflow: hidden; /* đóng thì không thấy nội dung */
+  background: #fff;
+  transition: width 240ms ease;
+}
+
+.drawer-inner {
+  width: var(--drawer-w);
+  height: 100%;
+  padding: 12px 12px 18px;
+  overflow: auto;
+}
+
+/* Khi mở drawer */
+body.drawer-open .drawer {
+  width: var(--drawer-w);
+}
+body.drawer-open .split-divider {
   opacity: 1;
 }
 
-.drawer-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.drawer {
-  position: absolute;
-  top: var(--topbar-h);
-  left: 0;
-  width: var(--drawer-w);
-  height: calc(100% - var(--topbar-h));
-  background: #fff;
-  border-right: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  padding: 12px 14px 20px;
-  overflow: auto;
-
-  /* slide animation */
-  transform: translateX(-12px);
-  transition: transform 180ms ease;
-}
-.drawer-wrap.is-open .drawer {
-  transform: translateX(0);
-}
-
-.drawer-section {
-  padding: 10px 4px;
-}
-.drawer-section + .drawer-section {
-  border-top: 1px solid var(--line);
-}
-
-/* Drawer headings */
-.section-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 2px 10px;
-  font-weight: 900;
-  font-size: 15px;
-}
-.hint {
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* MODE SWITCH */
-.mode-switch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.mode-opt {
-  cursor: pointer;
-  user-select: none;
-}
-.mode-opt input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.mode-pill {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--line);
-  background: #fff;
+/* Các block trong drawer */
+.block {
   border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 12px;
+}
+
+/* ---------- Select rows (language) ---------- */
+.select-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px 1fr 28px;
+  align-items: center;
+  gap: 10px;
   padding: 10px 10px;
-  font-weight: 800;
-}
-.mode-ic {
-  font-size: 16px;
-}
-.mode-opt input:checked + .mode-pill {
-  background: #111;
-  color: #fff;
-  border-color: #111;
-}
-
-/* Preset chat box */
-.preset-box {
-  margin-top: 10px;
-  border: 1px solid var(--line);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
   border-radius: 12px;
-  padding: 10px 12px;
-  background: #fff;
 }
-.preset-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
-}
-.preset-row + .preset-row {
-  border-top: 1px dashed rgba(0, 0, 0, 0.08);
-}
-.preset-k {
-  color: var(--muted);
-  font-weight: 700;
-}
-.preset-v {
-  font-weight: 900;
-}
-
-/* LANGUAGE UI */
-.lang-row {
-  display: grid;
-  grid-template-columns: 46px 1fr;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
+.select-row:hover {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .flag {
-  width: 42px;
-  height: 34px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: #fff;
-  border: 1px solid var(--line);
-  font-size: 18px;
-}
-.flag--mini {
   width: 34px;
-  height: 28px;
-  border-radius: 9px;
-  font-size: 16px;
-}
-
-.select {
-  width: 100%;
-  padding: 12px 14px;
-  border: 0;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 22px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.select__label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.select__chev {
-  font-size: 22px;
-  transform: translateY(-1px);
-}
-
-.swap {
+  height: 24px;
+  border-radius: 4px;
   display: grid;
   place-items: center;
-  height: 20px;
-}
-.swap-btn {
-  border: 0;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-  padding: 0 8px;
+  font-size: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
 }
 
-/* dropdown list for languages */
-.dropdown {
-  margin: 10px 0 0 52px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: #fff;
-  overflow: hidden;
-  display: none; /* JS toggle .is-open */
+.select-label {
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.05;
 }
-.dropdown.is-open {
+
+.chev {
+  display: grid;
+  place-items: center;
+  opacity: 0.9;
+}
+
+/* Nút swap ở giữa 2 row */
+.swap-btn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  margin: 2px 0 2px 36px; /* canh giống ảnh: nằm gần flag */
+}
+.swap-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ---------- Dropdown menu ---------- */
+.menu {
+  margin: 6px 0 0 44px; /* thụt vào dưới label giống ảnh */
+  border-radius: 12px;
+  padding: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+
+  /* Mặc định ẩn: JS có thể add .is-open để hiện */
+  display: none;
+}
+.menu.is-open {
   display: block;
 }
 
-.dropdown-item {
+.menu-item {
   width: 100%;
-  padding: 12px 14px;
-  border: 0;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  cursor: pointer;
-}
-.dropdown-item + .dropdown-item {
-  border-top: 1px solid var(--line);
-}
-.dropdown-item:hover {
-  background: #fafafa;
-}
-.dropdown-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* SETTINGS FORM */
-.form-row {
   display: grid;
-  gap: 8px;
-  padding: 8px 0;
-}
-.label {
-  font-size: 12px;
-  font-weight: 900;
-  color: #111;
-}
-.field {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 14px;
-  background: #fff;
-}
-.field--select {
-  cursor: pointer;
-}
-.field--textarea {
-  resize: vertical;
-  min-height: 88px;
-}
-
-/* Toggle */
-.toggle-row {
-  padding: 8px 0 0;
-}
-.toggle {
-  display: inline-flex;
+  grid-template-columns: 38px 1fr;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
-  user-select: none;
-  font-weight: 800;
-}
-.toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.toggle-ui {
-  width: 44px;
-  height: 26px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.12);
-  position: relative;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-.toggle-ui::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 3px;
-  width: 20px;
-  height: 20px;
-  transform: translateY(-50%);
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-  transition: left 160ms ease;
-}
-.toggle input:checked + .toggle-ui {
-  background: rgba(0, 0, 0, 0.85);
-}
-.toggle input:checked + .toggle-ui::after {
-  left: 21px;
-}
-.toggle-text {
-  font-size: 13px;
-}
-
-/* TOPIC */
-.topic-head {
-  width: 100%;
-  padding: 10px 6px;
+  padding: 10px 10px;
   border: 0;
   background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 20px;
+}
+.menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ---------- Topic accordion header ---------- */
+.block-title {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
   cursor: pointer;
+  border-radius: 12px;
 }
-.topic-head__left {
-  display: flex;
+.block-title:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+.title-left {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 20px;
-  font-weight: 900;
 }
-.topic-head svg {
-  width: 24px;
-  height: 24px;
-}
-.topic-head__chev {
+.title-text {
   font-size: 22px;
+  font-weight: 750;
 }
 
+/* ---------- Topic list ---------- */
 .topic-list {
-  padding: 8px 4px 4px;
+  margin-top: 4px;
+  padding-left: 36px; /* giống ảnh: list thụt vào dưới icon */
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
+
 .topic-item {
   text-align: left;
-  width: 100%;
-  padding: 10px 10px;
   border: 0;
   background: transparent;
-  font-size: 18px;
+  padding: 8px 8px;
+  border-radius: 10px;
+  font-size: 20px;
   cursor: pointer;
-  border-radius: 12px;
-}
-.topic-item--new {
-  font-weight: 900;
 }
 .topic-item:hover {
-  background: #fafafa;
+  background: rgba(0, 0, 0, 0.04);
 }
 
-/* Drawer actions */
-.drawer-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 12px 4px 0;
-}
-.btn {
-  border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 12px;
-  padding: 10px 10px;
-  font-weight: 900;
-  cursor: pointer;
-}
-.btn--ghost:hover {
-  background: #fafafa;
-}
-.btn--danger {
-  border-color: rgba(255, 43, 43, 0.25);
-  background: rgba(255, 43, 43, 0.06);
-}
-.btn--danger:hover {
-  background: rgba(255, 43, 43, 0.1);
-}
-
-/* CONTENT */
-.content {
-  padding: 14px 14px 0;
-  overflow: auto;
-  min-height: 0;
-}
-
-.stack {
-  height: 100%;
-  display: grid;
-  grid-template-rows: auto 1fr auto 1.2fr;
-  gap: 14px;
-  min-height: 0;
-}
-
-/* INFO BAR */
-.infobar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fff;
-}
-.infobar__left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.infobar__right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.badge {
-  font-size: 12px;
-  font-weight: 1000;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--chip);
-  border: 1px solid var(--chip-strong);
-}
-.badge[data-mode="translate"] {
-  background: rgba(0, 0, 0, 0.06);
-}
-.badge[data-mode="chat"] {
-  background: rgba(0, 0, 0, 0.06);
-}
-.infotext {
-  color: var(--muted);
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.infotext code {
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    monospace;
-  font-size: 12px;
-  background: rgba(0, 0, 0, 0.06);
-  padding: 2px 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-.step {
-  font-size: 12px;
-  font-weight: 900;
-  color: #111;
-  background: rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 999px;
-  padding: 6px 10px;
-}
-
-/* PANELS */
-.panel {
-  width: 100%;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.panel--split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-radius: var(--radius);
-  overflow: hidden;
-  border: 1px solid var(--line);
-}
-
-.divider {
-  height: 1px;
-  background: var(--line);
-  margin: 0 2px;
-}
-
-/* CARDS */
-.card {
-  position: relative;
-  min-height: 160px;
-  padding: 16px 18px 16px;
-  overflow: hidden;
-}
-
-.card--cool {
-  background: var(--cool);
-}
-.card--warm {
-  background: var(--warm);
-}
-
-.card--large {
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  min-height: 320px;
-  padding: 18px 18px 16px;
-}
-
-.card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.card__label {
-  font-weight: 1000;
-  font-size: 13px;
-  color: rgba(0, 0, 0, 0.72);
-  white-space: nowrap;
-}
-
-/* Icon */
-.card__icon {
-  width: 44px;
-  height: 44px;
-  color: #111;
-  opacity: 0.85;
-}
-.card__icon svg {
-  width: 44px;
-  height: 44px;
-}
-
-/* Toolbar buttons */
-.toolbar {
+.topic-item.is-add {
   display: inline-flex;
+  align-items: center;
   gap: 8px;
 }
-.tool-btn {
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.65);
-  border-radius: 999px;
-  padding: 7px 12px;
+.plus {
   font-weight: 900;
-  font-size: 12px;
-  cursor: pointer;
-}
-.tool-btn:hover {
-  background: rgba(255, 255, 255, 0.85);
-}
-.tool-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
-/* Text blocks */
-.card__text {
-  margin-top: 12px;
-  font-size: 18px;
-  line-height: 1.55;
-  color: #111;
-  max-width: 95%;
+/* =========================================================
+   CONTENT AREA
+   ========================================================= */
+.content {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background: #fff;
 }
 
-/* Empty state */
-.empty {
-  padding: 14px 12px;
-  border: 1px dashed rgba(0, 0, 0, 0.15);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.55);
-  color: rgba(0, 0, 0, 0.6);
+/* Panel chung */
+.panel {
+  position: relative;
+  min-height: 42vh;
+  padding: 18px 16px 44px;
+  overflow: hidden; /* để decor không tràn */
+}
+
+/* Panel 1 (trên): nền chia 2 màu (xanh nhạt trái + hồng nhạt phải) */
+.panel-src {
+  background: linear-gradient(
+    90deg,
+    var(--panel-blue) 0%,
+    var(--panel-blue) 46%,
+    var(--panel-pink) 46%,
+    var(--panel-pink) 100%
+  );
+}
+
+/* Panel 2 (dưới): nền hồng nhạt */
+.panel-dst {
+  background: var(--panel-pink);
+}
+
+/* Icon góc trái trên panel */
+.panel-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: rgba(0, 0, 0, 0.65);
+}
+.panel-icon-text {
+  font-size: 26px;
   font-weight: 800;
 }
 
-/* WATERMARKS (sun + star) */
-.watermark {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.25;
+/* Nội dung text */
+.panel-body {
+  margin-top: 6px;
+  max-width: 92%;
+}
+.panel-body p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
 }
 
-.watermark--sun::before {
-  content: "";
+/* Placeholder text (để demo rót dữ liệu) */
+.placeholder {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Dots pager */
+.dots {
   position: absolute;
-  width: 240px;
-  height: 240px;
-  left: 40%;
-  top: 18%;
-  transform: translate(-50%, -50%);
+  left: 20px;
+  bottom: 16px;
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  background: transparent;
+  opacity: 0.95;
+}
+
+/* Divider ngang giữa 2 panel */
+.h-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* Decor (mờ giống ảnh) */
+.decor {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.25;
+  filter: blur(0.2px);
+}
+
+/* Mặt trời: góc trái trên của panel-src */
+.decor-sun {
+  width: 210px;
+  height: 210px;
+  left: 46px;
+  top: 26px;
   background:
     radial-gradient(
       circle at center,
-      rgba(255, 255, 255, 0.95) 0 38%,
-      rgba(255, 255, 255, 0) 39% 100%
+      rgba(255, 255, 255, 0.9) 0 34%,
+      transparent 35%
     ),
     conic-gradient(
       from 0deg,
       rgba(255, 255, 255, 0.9) 0 10deg,
-      rgba(255, 255, 255, 0) 10deg 20deg,
-      rgba(255, 255, 255, 0.9) 20deg 30deg,
-      rgba(255, 255, 255, 0) 30deg 40deg,
-      rgba(255, 255, 255, 0.9) 40deg 50deg,
-      rgba(255, 255, 255, 0) 50deg 60deg,
-      rgba(255, 255, 255, 0.9) 60deg 70deg,
-      rgba(255, 255, 255, 0) 70deg 80deg,
-      rgba(255, 255, 255, 0.9) 80deg 90deg,
-      rgba(255, 255, 255, 0) 90deg 100deg,
-      rgba(255, 255, 255, 0.9) 100deg 110deg,
-      rgba(255, 255, 255, 0) 110deg 120deg,
-      rgba(255, 255, 255, 0.9) 120deg 130deg,
-      rgba(255, 255, 255, 0) 130deg 140deg,
-      rgba(255, 255, 255, 0.9) 140deg 150deg,
-      rgba(255, 255, 255, 0) 150deg 160deg,
-      rgba(255, 255, 255, 0.9) 160deg 170deg,
-      rgba(255, 255, 255, 0) 170deg 180deg,
-      rgba(255, 255, 255, 0.9) 180deg 190deg,
-      rgba(255, 255, 255, 0) 190deg 200deg,
-      rgba(255, 255, 255, 0.9) 200deg 210deg,
-      rgba(255, 255, 255, 0) 210deg 220deg,
-      rgba(255, 255, 255, 0.9) 220deg 230deg,
-      rgba(255, 255, 255, 0) 230deg 240deg,
-      rgba(255, 255, 255, 0.9) 240deg 250deg,
-      rgba(255, 255, 255, 0) 250deg 260deg,
-      rgba(255, 255, 255, 0.9) 260deg 270deg,
-      rgba(255, 255, 255, 0) 270deg 280deg,
-      rgba(255, 255, 255, 0.9) 280deg 290deg,
-      rgba(255, 255, 255, 0) 290deg 300deg,
-      rgba(255, 255, 255, 0.9) 300deg 310deg,
-      rgba(255, 255, 255, 0) 310deg 320deg,
-      rgba(255, 255, 255, 0.9) 320deg 330deg,
-      rgba(255, 255, 255, 0) 330deg 340deg,
-      rgba(255, 255, 255, 0.9) 340deg 350deg,
-      rgba(255, 255, 255, 0) 350deg 360deg
+      transparent 10deg 20deg
     );
-  border-radius: 50%;
+  border-radius: 999px;
+  /* Tạo tia đơn giản bằng mask */
+  mask: radial-gradient(circle at center, #000 0 60%, transparent 61%);
 }
 
-.watermark--star::before {
-  content: "★";
-  position: absolute;
+/* Ngôi sao: giữa panel-dst */
+.decor-star {
+  width: 260px;
+  height: 260px;
   left: 50%;
-  top: 50%;
+  top: 46%;
   transform: translate(-50%, -50%);
-  font-size: 220px;
-  color: rgba(255, 255, 200, 0.95);
-  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 200, 0.9);
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
 }
 
-/* PAGER DOTS */
-.pager {
-  position: absolute;
-  left: 20px;
-  bottom: 14px;
-  display: flex;
-  gap: 8px;
-  opacity: 0.65;
-}
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  border: 1.5px solid #111;
-  background: transparent;
-}
-.dot.is-on {
-  background: #111;
+/* Spacer để cuối content không bị mic che */
+.content-bottom-spacer {
+  height: calc(var(--micbar-h) + env(safe-area-inset-bottom));
 }
 
-/* SKELETON */
-.skeleton {
-  height: 14px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
-  margin: 10px 0;
-}
-.s1 {
-  width: 92%;
-}
-.s2 {
-  width: 80%;
-}
-.s3 {
-  width: 60%;
-}
-
-/* MIC */
+/* =========================================================
+   MIC BAR (fixed bottom, giống ảnh)
+   ========================================================= */
 .micbar {
-  display: grid;
-  place-items: center;
-  border-top: 1px solid var(--line);
-  background: #fff;
-  padding-bottom: calc(18px + env(safe-area-inset-bottom));
-}
-
-.mic-btn {
-  width: 92px;
-  height: 92px;
-  border-radius: 999px;
-  border: 6px solid rgba(0, 0, 0, 0.08);
-  background: var(--danger);
-  display: grid;
-  place-items: center;
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-  position: relative;
-}
-
-.mic-ic {
-  width: 40px;
-  height: 40px;
-  color: #fff;
-}
-.mic-stop {
-  display: none;
-  width: 58px;
-  height: 58px;
-  border-radius: 999px;
-  background: var(--danger);
-}
-
-/* Spinner overlay (processing) */
-.mic-spinner {
-  display: none;
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  border: 6px solid rgba(255, 255, 255, 0.25);
-  border-top-color: rgba(255, 255, 255, 0.9);
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* recording state */
-.mic-btn.is-recording .mic-ic {
-  display: none;
-}
-.mic-btn.is-recording .mic-stop {
-  display: block;
-}
-
-/* processing state (JS add .is-processing) */
-.mic-btn.is-processing .mic-ic,
-.mic-btn.is-processing .mic-stop {
-  opacity: 0.2;
-}
-.mic-btn.is-processing .mic-spinner {
-  display: block;
-}
-
-/* TOASTS */
-.toast-wrap {
   position: fixed;
-  right: 14px;
-  bottom: 130px;
-  z-index: 80;
-  display: grid;
-  gap: 10px;
-  max-width: min(92vw, 380px);
-  pointer-events: none; /* allow clicks through except toast itself */
-}
-.toast {
-  pointer-events: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--micbar-h);
+  padding-bottom: env(safe-area-inset-bottom);
   background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 12px 12px;
-}
-.toast[data-type="error"] {
-  border-color: rgba(255, 43, 43, 0.25);
-  background: rgba(255, 43, 43, 0.06);
-}
-.toast[data-type="ok"] {
-  border-color: rgba(26, 163, 91, 0.25);
-  background: rgba(26, 163, 91, 0.06);
-}
-.toast__title {
-  font-weight: 1000;
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-.toast__msg {
-  color: rgba(0, 0, 0, 0.7);
-  font-weight: 800;
-  font-size: 13px;
-  line-height: 1.4;
+  display: grid;
+  place-items: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* Responsive */
-@media (max-width: 820px) {
-  .panel--split {
-    grid-template-columns: 1fr;
-  }
-
-  .stack {
-    grid-template-rows: auto auto auto auto;
-    height: auto;
-  }
-
-  .infobar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+/* Nút mic */
+.mic-btn {
+  width: 86px;
+  height: 86px;
+  border: 0;
+  background: transparent;
+  position: relative;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.mic-btn:active {
+  transform: scale(0.985);
 }
 
-@media (max-width: 420px) {
-  .select {
-    font-size: 20px;
+/* Vòng ngoài (giống viền) */
+.mic-ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 999px;
+  border: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Core đỏ */
+.mic-core {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--accent-red);
+  display: grid;
+  place-items: center;
+}
+
+/* Icon mic */
+.mic-ico {
+  width: 30px;
+  height: 30px;
+}
+
+/* Stop icon (ẩn mặc định) */
+.stop-ico {
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border-radius: 4px;
+  display: none;
+}
+
+/* =========================================================
+   RECORDING STATE (giống ảnh 3: nút thành "stop")
+   - JS chỉ cần add class body.is-recording
+   ========================================================= */
+body.is-recording .mic-ico {
+  display: none;
+}
+body.is-recording .stop-ico {
+  display: block;
+}
+
+/* =========================================================
+   SCRIM (tuỳ chọn)
+   - Nếu bạn muốn kiểu overlay: JS bật opacity + pointer-events
+   ========================================================= */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+body.drawer-open .scrim {
+  opacity: 0; /* drawer push nên để 0; nếu muốn overlay thì chỉnh lên 1 */
+}
+
+/* =========================================================
+   RESPONSIVE NOTES
+   - Nếu màn lớn: vẫn ok vì drawer push
+   - Nếu muốn drawer overlay ở màn nhỏ: bạn có thể đổi logic width/position
+   ========================================================= */
+@media (min-width: 880px) {
+  :root {
+    --drawer-w: 360px;
   }
-  .topic-item,
-  .dropdown-item {
-    font-size: 18px;
-  }
-  .card__text {
-    font-size: 17px;
-  }
-  .watermark--star::before {
-    font-size: 190px;
-  }
+}
+/* Ô nhập nằm trong panel trên, nhìn như vùng trống của app */
+.input-area {
+  width: 100%;
+  min-height: 170px; /* chỉnh theo đúng cảm giác khoảng trống */
+  resize: none; /* không cho kéo góc */
+  border: 0; /* bỏ viền */
+  outline: none; /* bỏ viền focus mặc định */
+  background: transparent; /* hoà vào nền panel */
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.85);
+  padding: 8px 6px;
+}
+
+/* Placeholder mềm hơn */
+.input-area::placeholder {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* Nếu muốn khi focus có “nhẹ nhàng” một chút */
+.input-area:focus {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+}
+
+/* Vùng preview (khi bạn không muốn textarea) */
+.src-preview {
+  font-size: 17px;
+  line-height: 1.6;
+  padding: 8px 6px;
 }
