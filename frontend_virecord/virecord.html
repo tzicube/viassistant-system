@@ -2,422 +2,310 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <!-- Viewport + safe-area (iPhone notch) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ViRecord UI</title>
+    <title>ViRecord</title>
     <link rel="stylesheet" href="virecord.css" />
   </head>
 
-  <!--
-    Gợi ý class trạng thái (JS có thể toggle):
-    - .drawer-open  : mở drawer bên trái 
-    - .is-recording : trạng thái đang ghi âm 
-  -->
-  <body class="">
-    <div class="app" id="app">
-      <!-- =========================
-           TOP BAR 
-           ========================= -->
-      <header class="topbar" role="banner">
-        <!-- Nút mở drawer -->
-        <button
-          class="icon-btn"
-          id="btnDrawer"
-          type="button"
-          aria-label="Open settings"
-          aria-controls="drawer"
-          aria-expanded="false"
-        >
-          <!-- Sliders icon (inline SVG để không cần asset) -->
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 6h16M4 12h16M4 18h16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-            <circle
-              cx="9"
-              cy="6"
-              r="2"
-              fill="#fff"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-            <circle
-              cx="15"
-              cy="12"
-              r="2"
-              fill="#fff"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-            <circle
-              cx="11"
-              cy="18"
-              r="2"
-              fill="#fff"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-          </svg>
-        </button>
-
-        <!-- Brand -->
-        <div class="brand" aria-label="App name">
-          <span class="brand-text">ViRecord</span>
-        </div>
-
-        <!-- Avatar góc phải (placeholder) -->
-        <div class="brand-right" aria-hidden="true">
-          <div class="avatar">🐤</div>
-        </div>
-      </header>
-
-      <!-- =========================
-           STAGE: Drawer + Content
-           Drawer dạng "push" 
-           ========================= -->
-      <main class="stage" role="main">
-        <!-- ===== Drawer (Settings panel) ===== -->
-        <aside class="drawer" id="drawer" aria-label="Settings drawer">
-          <div class="drawer-inner">
-            <!-- ---------- Language block ---------- -->
-            <section class="block" aria-label="Language settings">
-              <!-- Hàng chọn ngôn ngữ nguồn -->
-              <button
-                class="select-row"
-                id="btnLangFrom"
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded="false"
-                aria-controls="langFromMenu"
-              >
-                <!-- Flag: JS có thể thay data-code + text/emoji -->
-                <span class="flag" data-code="XX" aria-hidden="true">🏳️</span>
-
-                <!-- Label: JS rót vào #langFromLabel -->
-                <span class="select-label" id="langFromLabel"
-                  >Input language</span
-                >
-
-                <span class="chev" aria-hidden="true">
-                  <svg class="icon" viewBox="0 0 24 24">
-                    <path
-                      d="M6 9l6 6l6-6"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </span>
-              </button>
-              <div
-                class="menu"
-                id="langFromMenu"
-                role="listbox"
-                aria-label="Input language options"
-              >
-                <!-- JS render options từ API vào đây -->
-              </div>
-
-              <!-- Nút đổi chiều (swap) -->
-              <button
-                class="swap-btn"
-                id="btnSwapLang"
-                type="button"
-                aria-label="Swap languages"
-              >
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M12 4v14m0 0l-4-4m4 4l4-4"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-
-              <!-- Hàng chọn ngôn ngữ đích -->
-              <button
-                class="select-row"
-                id="btnLangTo"
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded="false"
-                aria-controls="langToMenu"
-              >
-                <span class="flag" data-code="YY" aria-hidden="true">🏳️</span>
-                <span class="select-label" id="langToLabel"
-                  >Output language</span
-                >
-
-                <span class="chev" aria-hidden="true">
-                  <svg class="icon" viewBox="0 0 24 24">
-                    <path
-                      d="M6 9l6 6l6-6"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </span>
-              </button>
-
-              <!--
-                Dropdown menu (JS có thể render options từ API).
-                - id dùng để JS target
-                - role listbox/option để dễ làm accessible
-                - mặc định ẩn bằng CSS (JS add .is-open để hiện)
-              -->
-              <div
-                class="menu"
-                id="langToMenu"
-                role="listbox"
-                aria-label="Output language options"
-              >
-                <!-- Placeholder options -->
-                <button
-                  class="menu-item"
-                  role="option"
-                  type="button"
-                  data-lang="l1"
-                >
-                  <span class="flag" aria-hidden="true">🏳️</span>
-                  <span>Language A</span>
-                </button>
-                <button
-                  class="menu-item"
-                  role="option"
-                  type="button"
-                  data-lang="l2"
-                >
-                  <span class="flag" aria-hidden="true">🏳️</span>
-                  <span>Language B</span>
-                </button>
-                <button
-                  class="menu-item"
-                  role="option"
-                  type="button"
-                  data-lang="l3"
-                >
-                  <span class="flag" aria-hidden="true">🏳️</span>
-                  <span>Language C</span>
-                </button>
-              </div>
-            </section>
-
-            <!-- ---------- Topic block ---------- -->
-            <section class="block" aria-label="Topic settings">
-              <!-- Header topic (dạng accordion) -->
-              <button
-                class="block-title"
-                id="btnTopic"
-                type="button"
-                aria-expanded="true"
-                aria-controls="topicList"
-              >
-                <span class="title-left">
-                  <!-- Folder icon -->
-                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M3 7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  <span class="title-text">Topic</span>
-                </span>
-
-                <span class="chev" aria-hidden="true">
-                  <svg class="icon" viewBox="0 0 24 24">
-                    <path
-                      d="M6 9l6 6l6-6"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </span>
-              </button>
-
-              <!-- List topic (JS render từ API vào đây) -->
-              <div class="topic-list" id="topicList" role="list">
-                <!-- Placeholder items -->
-                <button
-                  class="topic-item is-add"
-                  type="button"
-                  id="btnNewTopic"
-                >
-                  <span class="plus">＋</span>
-                  <span>New topic</span>
-                </button>
-                <!-- JS sẽ rót topic vào đây -->
-
-                <!-- Topic items mẫu (JS sẽ thay/append từ API)
-                <button class="topic-item" type="button" data-topic="t1">
-                  Topic One
-                </button>
-                <button class="topic-item" type="button" data-topic="t2">
-                  Topic Two
-                </button>
-                <button class="topic-item" type="button" data-topic="t3">
-                  Topic Three
-                </button> -->
-              </div>
-            </section>
-          </div>
-        </aside>
-
-        <!-- Divider giữa drawer và content -->
-        <div class="split-divider" aria-hidden="true"></div>
-
-        <!-- ===== Content area ===== -->
-        <section class="content" id="content" aria-label="Translation content">
-          <!-- Panel 1: nguồn  -->
-          <article class="panel panel-src" aria-label="Source text panel">
-            <!-- Icon góc trái (voice silhouette) -->
-            <div class="panel-icon" aria-hidden="true">
-              <svg class="icon" viewBox="0 0 24 24">
+  <body>
+    <!--
+      #app: app root
+      data-src / data-dst: backend có thể đọc để biết ngôn ngữ hiện tại
+    -->
+    <div class="page">
+      <div class="phone-frame">
+        <div class="app" id="app" data-src="zh" data-dst="vi">
+          <!-- TOP BAR -->
+          <header class="topbar">
+            <!-- Nút mở drawer -->
+            <button
+              class="icon-btn"
+              id="btnDrawer"
+              type="button"
+              aria-label="Open menu"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
-                  d="M11 5a3 3 0 1 1 6 0v6a3 3 0 1 1-6 0V5z"
-                  fill="currentColor"
-                  opacity="0.9"
-                />
-                <path
-                  d="M4 11c0 2.5 2.2 4.5 5 4.5h2"
+                  d="M4 6h10M18 6h2M4 12h2M8 12h12M4 18h14"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
                 />
               </svg>
+            </button>
+
+            <div class="brand">
+              <span class="brand-text">ViRecord</span>
             </div>
 
-            <!-- Nội dung text: JS rót vào #srcText -->
-            <div class="panel-body">
-              <!-- Ô nhập: gõ trực tiếp trong vùng trống -->
-              <textarea
-                id="inputText"
-                class="input-area"
-                placeholder="Type here..."
-                rows="6"
-              ></textarea>
+            <button class="avatar-btn" type="button" aria-label="Profile">
+              <!-- bạn thay hình/ico tùy ý -->
+              <span class="avatar">🐥</span>
+            </button>
+          </header>
 
-              <!-- Vùng hiển thị text nguồn (khi bạn dùng mic/STT hoặc muốn show lại)
-       JS có thể ẩn/hiện tùy mode -->
-              <div id="srcText" class="src-preview" hidden></div>
-            </div>
+          <!-- DRAWER WRAP -->
+          <div class="drawer-wrap" id="drawerWrap" aria-hidden="true">
+            <!-- lớp phủ bấm để đóng -->
+            <button
+              class="drawer-backdrop"
+              id="btnDrawerClose"
+              type="button"
+              aria-label="Close menu"
+            ></button>
 
-            <!-- Dots pagination: JS có thể render số chấm theo câu/đoạn -->
-            <div class="dots" id="srcDots" aria-label="Source pager dots">
-              <span class="dot"></span><span class="dot"></span
-              ><span class="dot"></span> <span class="dot"></span
-              ><span class="dot"></span><span class="dot"></span>
-            </div>
+            <!-- DRAWER -->
+            <aside class="drawer" role="dialog" aria-label="Menu">
+              <!-- Language block -->
+              <section class="drawer-section">
+                <div class="lang-row">
+                  <div class="lang-select">
+                    <!-- Nút chọn ngôn ngữ nguồn -->
+                    <button
+                      class="lang-btn"
+                      id="srcLangBtn"
+                      type="button"
+                      aria-haspopup="true"
+                      aria-expanded="false"
+                      aria-controls="srcLangMenu"
+                    >
+                      <img
+                        class="lang-flag"
+                        id="srcLangFlag"
+                        src="photo/tw.png"
+                        alt=""
+                      />
+                      <span class="lang-label" id="srcLangLabel">Chinese</span>
+                      <span class="chev" aria-hidden="true">▾</span>
+                    </button>
 
-            <!-- Trang trí nền-->
-            <div class="decor decor-sun" aria-hidden="true"></div>
-          </article>
+                    <!-- Menu ngôn ngữ nguồn -->
+                    <div class="lang-menu" id="srcLangMenu" role="menu">
+                      <button
+                        class="lang-item"
+                        type="button"
+                        data-lang="vi"
+                        data-label="Vietnamese"
+                        data-flag="photo/VN.png"
+                      >
+                        <img src="photo/VN.png" alt="" />
+                        <span>Vietnamese</span>
+                      </button>
+                      <button
+                        class="lang-item"
+                        type="button"
+                        data-lang="zh"
+                        data-label="Chinese"
+                        data-flag="photo/tw.png"
+                      >
+                        <img src="photo/tw.png" alt="" />
+                        <span>Chinese</span>
+                      </button>
+                      <button
+                        class="lang-item"
+                        type="button"
+                        data-lang="en"
+                        data-label="English"
+                        data-flag="photo/en.png"
+                      >
+                        <img src="photo/en.png" alt="" />
+                        <span>English</span>
+                      </button>
+                    </div>
+                  </div>
 
-          <!-- Divider ngang giữa 2 panel -->
-          <div class="h-divider" aria-hidden="true"></div>
+                  <!-- Swap -->
+                  <button
+                    class="swap-btn"
+                    id="btnSwapLang"
+                    type="button"
+                    aria-label="Swap languages"
+                    title="Swap"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M7 7h11l-2-2M18 7l-2 2M17 17H6l2 2M6 17l2-2"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
 
-          <!-- Panel 2: bản dịch  -->
-          <article class="panel panel-dst" aria-label="Translated text panel">
-            <!-- Icon "文A" (dùng text để bạn dễ thay đổi) -->
-            <div class="panel-icon panel-icon-text" aria-hidden="true">文A</div>
+                <div class="lang-row">
+                  <div class="lang-select">
+                    <!-- Nút chọn ngôn ngữ đích -->
+                    <button
+                      class="lang-btn"
+                      id="dstLangBtn"
+                      type="button"
+                      aria-haspopup="true"
+                      aria-expanded="false"
+                      aria-controls="dstLangMenu"
+                    >
+                      <img
+                        class="lang-flag"
+                        id="dstLangFlag"
+                        src="photo/VN.png"
+                        alt=""
+                      />
+                      <span class="lang-label" id="dstLangLabel"
+                        >Vietnamese</span
+                      >
+                      <span class="chev" aria-hidden="true">▾</span>
+                    </button>
 
-            <!-- Nội dung text: JS rót vào #dstText -->
-            <div class="panel-body" id="dstText">
-              <p class="placeholder">
-                Translated text will be injected here from API…
-              </p>
-            </div>
+                    <!-- Menu ngôn ngữ đích -->
+                    <div class="lang-menu" id="dstLangMenu" role="menu">
+                      <button
+                        class="lang-item"
+                        type="button"
+                        data-lang="vi"
+                        data-label="Vietnamese"
+                        data-flag="photo/VN.png"
+                      >
+                        <img src="photo/VN.png" alt="" />
+                        <span>Vietnamese</span>
+                      </button>
+                      <button
+                        class="lang-item"
+                        type="button"
+                        data-lang="zh"
+                        data-label="Chinese"
+                        data-flag="photo/tw.png"
+                      >
+                        <img src="photo/tw.png" alt="" />
+                        <span>Chinese</span>
+                      </button>
+                      <button
+                        class="lang-item"
+                        type="button"
+                        data-lang="en"
+                        data-label="English"
+                        data-flag="photo/en.png"
+                      >
+                        <img src="photo/en.png" alt="" />
+                        <span>English</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-            <div class="dots" id="dstDots" aria-label="Translated pager dots">
-              <span class="dot"></span><span class="dot"></span
-              ><span class="dot"></span> <span class="dot"></span
-              ><span class="dot"></span><span class="dot"></span>
-            </div>
+                <!-- Hidden inputs: backend/JS có thể đọc -->
+                <input type="hidden" id="srcLang" value="zh" />
+                <input type="hidden" id="dstLang" value="vi" />
+              </section>
 
-            <!-- Trang trí nền  -->
-            <div class="decor decor-star" aria-hidden="true"></div>
-          </article>
+              <!-- Topic (giữ sẵn cho backend rót) -->
+              <section class="drawer-section">
+                <div class="topic-head">
+                  <span class="topic-ico" aria-hidden="true">🗂️</span>
+                  <span class="topic-title">Topic</span>
+                  <span class="topic-chev" aria-hidden="true">▾</span>
+                </div>
 
-          <!-- Spacer để không bị nút mic che khi scroll -->
-          <div class="content-bottom-spacer" aria-hidden="true"></div>
-        </section>
-      </main>
+                <button class="topic-item" type="button" id="btnNewTopic">
+                  ＋ New topic
+                </button>
 
-      <!-- =========================
-           MIC BAR (fixed bottom)
-           ========================= -->
-      <footer class="micbar" role="contentinfo">
-        <!--
-          JS có thể:
-          - toggle body.is-recording
-          - đổi aria-label
-        -->
-        <button
-          class="mic-btn"
-          id="btnMic"
-          type="button"
-          aria-label="Start recording"
-        >
-          <!-- Vòng ngoài -->
-          <span class="mic-ring" aria-hidden="true"></span>
+                <div class="topic-list" id="topicList">
+                  <!-- backend có thể render/append button vào đây -->
+                  <!--  [BACKEND/JS] Render topics vào đây. -->
+                </div>
+              </section>
+            </aside>
+          </div>
 
-          <!-- Vòng trong (màu đỏ) -->
-          <span class="mic-core" aria-hidden="true">
-            <!-- Mic icon (ẩn khi is-recording) -->
-            <svg class="mic-ico" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"
-                fill="none"
-                stroke="white"
-                stroke-width="2"
-              />
-              <path
-                d="M19 11a7 7 0 0 1-14 0"
-                fill="none"
-                stroke="white"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-              <path
-                d="M12 18v3"
-                fill="none"
-                stroke="white"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
+          <!-- MAIN CONTENT -->
+          <main class="content">
+            <!-- Nền chia đôi theo 2 ngôn ngữ (src/dst) -->
+            <div
+              class="lang-split-bg"
+              id="langSplitBg"
+              aria-hidden="true"
+            ></div>
 
-            <!-- Stop icon (hiện khi is-recording) -->
-            <span class="stop-ico" aria-hidden="true"></span>
-          </span>
-        </button>
-      </footer>
+            <section class="cards">
+              <!-- SOURCE CARD -->
+              <article class="card card-src" id="srcCard">
+                <div class="card-head">
+                  <span class="card-ico" aria-hidden="true">🗣️</span>
+                </div>
 
-      <!--
-        Scrim (tuỳ bạn dùng overlay hay không).
-        Hiện tại drawer là kiểu push nên scrim không bắt buộc,
-        nhưng vẫn để sẵn để JS bật/tắt nếu muốn click ra ngoài để đóng.
-      -->
-      <div class="scrim" id="scrim" aria-hidden="true"></div>
+                <!--
+              textarea nhập: backend/JS đọc #inputText
+            -->
+                <textarea
+                  class="card-input"
+                  id="inputText"
+                  placeholder="Nhập nội dung cần dịch..."
+                  rows="6"
+                ></textarea>
+
+                <!-- dots (trang trí giống UI ảnh) -->
+                <div class="dots" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span> <span></span><span></span><span></span
+                  ><span></span><span></span>
+                </div>
+              </article>
+
+              <!-- DEST CARD -->
+              <article class="card card-dst" id="dstCard">
+                <div class="card-head">
+                  <span class="card-ico" aria-hidden="true">文A</span>
+                </div>
+
+                <!--
+              output: backend/JS set nội dung vào #outputText
+            -->
+                <div class="card-output" id="outputText">
+                  <!-- placeholder -->
+                  <span class="muted">Kết quả dịch sẽ hiển thị ở đây...</span>
+                </div>
+
+                <div class="dots" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span> <span></span><span></span><span></span
+                  ><span></span><span></span>
+                </div>
+              </article>
+            </section>
+
+            <!-- MIC BUTTON (UI thôi) -->
+            <button
+              class="mic-btn"
+              id="btnMic"
+              type="button"
+              aria-label="Record"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M19 11a7 7 0 0 1-14 0M12 18v3M8 21h8"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </main>
+        </div>
+      </div>
     </div>
+    <script src="topbar_laco.js"></script>
     <script src="virecord.js"></script>
+    <!-- không đổi vị trí 2 liên kết này -->
   </body>
 </html>
