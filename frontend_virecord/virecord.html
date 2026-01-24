@@ -9,15 +9,25 @@
 
   <body>
     <!--
-      #app: app root
-      data-src / data-dst: backend có thể đọc để biết ngôn ngữ hiện tại
+      [UI WRAPPER]
+      - .page + .phone-frame: dùng để PC hiển thị như 1 app điện thoại ở giữa
+      - Mobile sẽ full-screen (tùy CSS bạn đã set)
     -->
     <div class="page">
       <div class="phone-frame">
+        <!--
+          [APP ROOT / STATE]
+          - #app: root của app
+          - data-src / data-dst: lưu trạng thái ngôn ngữ hiện tại (UI JS sẽ update)
+          - Backend/JS có thể đọc để biết ngôn ngữ đang chọn
+        -->
         <div class="app" id="app" data-src="zh" data-dst="vi">
           <!-- TOP BAR -->
           <header class="topbar">
-            <!-- Nút mở drawer -->
+            <!--
+              [EVENT]
+              - #btnDrawer: click để mở drawer/menu (UI JS xử lý)
+            -->
             <button
               class="icon-btn"
               id="btnDrawer"
@@ -40,14 +50,20 @@
             </div>
 
             <button class="avatar-btn" type="button" aria-label="Profile">
-              <!-- bạn thay hình/ico tùy ý -->
               <span class="avatar">🐥</span>
             </button>
           </header>
 
           <!-- DRAWER WRAP -->
+          <!--
+            [DRAWER CONTAINER]
+            - #drawerWrap: UI JS thêm/xóa class để mở/đóng drawer
+          -->
           <div class="drawer-wrap" id="drawerWrap" aria-hidden="true">
-            <!-- lớp phủ bấm để đóng -->
+            <!--
+              [EVENT]
+              - #btnDrawerClose: click backdrop để đóng drawer (UI JS xử lý)
+            -->
             <button
               class="drawer-backdrop"
               id="btnDrawerClose"
@@ -61,7 +77,14 @@
               <section class="drawer-section">
                 <div class="lang-row">
                   <div class="lang-select">
-                    <!-- Nút chọn ngôn ngữ nguồn -->
+                    <!--
+                      [LANG SELECT - SOURCE]
+                      - #srcLangBtn: click mở menu nguồn
+                      - #srcLangMenu: danh sách lựa chọn
+                      - UI JS sẽ update:
+                        + #srcLangFlag (icon)
+                        + #srcLangLabel (text)
+                    -->
                     <button
                       class="lang-btn"
                       id="srcLangBtn"
@@ -80,7 +103,11 @@
                       <span class="chev" aria-hidden="true">▾</span>
                     </button>
 
-                    <!-- Menu ngôn ngữ nguồn -->
+                    <!--
+                      [EVENT + DATA]
+                      - Các .lang-item có data-lang="vi|zh|en"
+                      - UI JS đọc data-lang rồi set vào hidden input (#srcLang/#dstLang)
+                    -->
                     <div class="lang-menu" id="srcLangMenu" role="menu">
                       <button
                         class="lang-item"
@@ -115,7 +142,10 @@
                     </div>
                   </div>
 
-                  <!-- Swap -->
+                  <!--
+                    [EVENT]
+                    - #btnSwapLang: đổi vị trí ngôn ngữ nguồn/đích (UI JS xử lý)
+                  -->
                   <button
                     class="swap-btn"
                     id="btnSwapLang"
@@ -138,7 +168,13 @@
 
                 <div class="lang-row">
                   <div class="lang-select">
-                    <!-- Nút chọn ngôn ngữ đích -->
+                    <!--
+                      [LANG SELECT - TARGET]
+                      - #dstLangBtn: click mở menu đích
+                      - UI JS sẽ update:
+                        + #dstLangFlag (icon)
+                        + #dstLangLabel (text)
+                    -->
                     <button
                       class="lang-btn"
                       id="dstLangBtn"
@@ -159,7 +195,6 @@
                       <span class="chev" aria-hidden="true">▾</span>
                     </button>
 
-                    <!-- Menu ngôn ngữ đích -->
                     <div class="lang-menu" id="dstLangMenu" role="menu">
                       <button
                         class="lang-item"
@@ -195,12 +230,17 @@
                   </div>
                 </div>
 
-                <!-- Hidden inputs: backend/JS có thể đọc -->
+                <!--
+                  [STATE FOR BACKEND/LOGIC JS]
+                  - #srcLang: NGÔN NGỮ NGUỒN (vi|zh|en) -> LOGIC/BE đọc để dịch đúng
+                  - #dstLang: NGÔN NGỮ ĐÍCH (vi|zh|en) -> LOGIC/BE đọc để dịch đúng
+                  (UI JS sẽ tự update 2 value này khi user chọn ngôn ngữ)
+                -->
                 <input type="hidden" id="srcLang" value="zh" />
                 <input type="hidden" id="dstLang" value="vi" />
               </section>
 
-              <!-- Topic (giữ sẵn cho backend rót) -->
+              <!-- Topic -->
               <section class="drawer-section">
                 <div class="topic-head">
                   <span class="topic-ico" aria-hidden="true">🗂️</span>
@@ -208,13 +248,25 @@
                   <span class="topic-chev" aria-hidden="true">▾</span>
                 </div>
 
+                <!--
+                  [EVENT]
+                  - #btnNewTopic: click để tạo topic mới
+                  - Logic JS/Backend sẽ xử lý (gọi API tạo topic, rồi render vào #topicList)
+                -->
                 <button class="topic-item" type="button" id="btnNewTopic">
                   ＋ New topic
                 </button>
 
+                <!--
+                  [BACKEND/JS RENDER HERE]
+                  - #topicList: nơi ĐỔ danh sách topic (buttons)
+                  - Mỗi topic nên render dạng:
+                    <button class="topic-item" type="button" data-topic="TOPIC_ID">TOPIC_TITLE</button>
+                  - Khi user click 1 topic: logic JS đọc btn.dataset.topic để set currentTopicId
+                -->
                 <div class="topic-list" id="topicList">
                   <!-- backend có thể render/append button vào đây -->
-                  <!--  [BACKEND/JS] Render topics vào đây. -->
+                  <!-- [BACKEND/JS] Render topics vào đây. -->
                 </div>
               </section>
             </aside>
@@ -222,7 +274,11 @@
 
           <!-- MAIN CONTENT -->
           <main class="content">
-            <!-- Nền chia đôi theo 2 ngôn ngữ (src/dst) -->
+            <!--
+              [UI BACKGROUND]
+              - .lang-split-bg: nền cờ (trên/dưới) đổi theo ngôn ngữ
+              - UI JS set CSS variables (--src-bg/--dst-bg)
+            -->
             <div
               class="lang-split-bg"
               id="langSplitBg"
@@ -237,8 +293,10 @@
                 </div>
 
                 <!--
-              textarea nhập: backend/JS đọc #inputText
-            -->
+                  [INPUT - LẤY DỮ LIỆU RA]
+                  - #inputText: user nhập text cần dịch
+                  - Logic JS/Backend đọc: document.getElementById("inputText").value
+                -->
                 <textarea
                   class="card-input"
                   id="inputText"
@@ -246,7 +304,6 @@
                   rows="6"
                 ></textarea>
 
-                <!-- dots (trang trí giống UI ảnh) -->
                 <div class="dots" aria-hidden="true">
                   <span></span><span></span><span></span><span></span
                   ><span></span> <span></span><span></span><span></span
@@ -261,10 +318,11 @@
                 </div>
 
                 <!--
-              output: backend/JS set nội dung vào #outputText
-            -->
+                  [OUTPUT - ĐỔ DỮ LIỆU VÀO]
+                  - #outputText: nơi hiển thị kết quả dịch
+                  - Logic JS/Backend đổ: document.getElementById("outputText").innerText = "..."
+                -->
                 <div class="card-output" id="outputText">
-                  <!-- placeholder -->
                   <span class="muted">Kết quả dịch sẽ hiển thị ở đây...</span>
                 </div>
 
@@ -276,7 +334,11 @@
               </article>
             </section>
 
-            <!-- MIC BUTTON (UI thôi) -->
+            <!--
+              [EVENT]
+              - #btnMic: nút ghi âm (STT)
+              - Logic JS sẽ gắn start/stop recording + gửi audio lên backend
+            -->
             <button
               class="mic-btn"
               id="btnMic"
@@ -304,6 +366,12 @@
         </div>
       </div>
     </div>
+
+    <!--
+      [SCRIPT ORDER - KHÔNG ĐỔI]
+      - topbar_laco.js: UI logic (drawer + chọn ngôn ngữ + đổi nền)
+      - virecord.js: logic/BE integration (topic + record + translate + đổ output)
+    -->
     <script src="topbar_laco.js"></script>
     <script src="virecord.js"></script>
     <!-- không đổi vị trí 2 liên kết này -->
