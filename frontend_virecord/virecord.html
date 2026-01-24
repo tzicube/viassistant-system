@@ -1,465 +1,111 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
+    <!-- Viewport + safe-area (iPhone notch) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ViRecord</title>
+    <title>ViRecord UI</title>
     <link rel="stylesheet" href="virecord.css" />
   </head>
 
-  <body>
-    <!--
-      ============================================================
-      ViRecord UI (Translate + ESP32 Chat) - API FIRST
-      - UI này chỉ là "khung": mọi dữ liệu đến từ API qua vi.js
-      - 2 MODE:
-          (A) TRANSLATE:   Audio -> STT -> Translate -> stt_text + translated_text (+ optional TTS)
-          (B) ESP32 CHAT:  Audio -> STT -> AI Chat -> stt_text + assistant_text (+ optional TTS)
-      - Hook IDs đã chuẩn hoá để JS/ESP32 dễ tích hợp
-      ============================================================
-    -->
+  <!--
+    Gợi ý class trạng thái (JS có thể toggle):
+    - .drawer-open  : mở drawer bên trái 
+    - .is-recording : trạng thái đang ghi âm 
+  -->
+  <body class="">
     <div class="app" id="app">
       <!-- =========================
-           TOP BAR
+           TOP BAR 
            ========================= -->
-      <header class="topbar">
-        <!-- [JS/UI] Click -> mở drawer: add class .is-open vào #drawerWrap -->
+      <header class="topbar" role="banner">
+        <!-- Nút mở drawer -->
         <button
           class="icon-btn"
           id="btnDrawer"
-          aria-label="Open menu"
+          type="button"
+          aria-label="Open settings"
+          aria-controls="drawer"
           aria-expanded="false"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
+          <!-- Sliders icon (inline SVG để không cần asset) -->
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
-              d="M4 6h10M18 6h2M4 12h2M8 12h12M4 18h14"
+              d="M4 6h16M4 12h16M4 18h16"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
             />
-            <path
-              d="M14 6a2 2 0 1 0-4 0a2 2 0 0 0 4 0ZM8 12a2 2 0 1 0-4 0a2 2 0 0 0 4 0ZM18 18a2 2 0 1 0-4 0a2 2 0 0 0 4 0Z"
-              fill="none"
+            <circle
+              cx="9"
+              cy="6"
+              r="2"
+              fill="#fff"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <circle
+              cx="15"
+              cy="12"
+              r="2"
+              fill="#fff"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <circle
+              cx="11"
+              cy="18"
+              r="2"
+              fill="#fff"
               stroke="currentColor"
               stroke-width="2"
             />
           </svg>
         </button>
 
-        <div class="brand">
-          <!-- [API -> UI] app title / topic title -->
-          <!-- JS set:
-               - Translate mode:   #appTitle = data.title (client input)
-               - Chat mode:        #appTitle = "ViAsistant" (preset)
-          -->
-          <div class="brand__title" id="appTitle">ViRecord</div>
-
-          <!-- [API -> UI] status chip (idle / recording / processing / done / error) -->
-          <!-- JS set: #statusChip.dataset.state = "idle|recording|processing|done|error" -->
-          <!-- JS set: #statusText.textContent = "Idle / Recording / Processing..." -->
-          <div
-            class="status-chip"
-            id="statusChip"
-            data-state="idle"
-            aria-live="polite"
-          >
-            <span class="status-dot" aria-hidden="true"></span>
-            <span id="statusText">Idle</span>
-          </div>
+        <!-- Brand -->
+        <div class="brand" aria-label="App name">
+          <span class="brand-text">ViRecord</span>
         </div>
 
-        <!-- [API -> UI] avatar emoji / avatar image (optional) -->
-        <button class="avatar-btn" id="btnProfile" aria-label="Profile">
-          <span class="avatar" id="avatarEmoji" aria-hidden="true">🐥</span>
-          <span class="avatar-hat" aria-hidden="true">🎩</span>
-        </button>
+        <!-- Avatar góc phải (placeholder) -->
+        <div class="brand-right" aria-hidden="true">
+          <div class="avatar">🐤</div>
+        </div>
       </header>
 
       <!-- =========================
-           DRAWER (JS toggle .is-open on #drawerWrap)
+           STAGE: Drawer + Content
+           Drawer dạng "push" 
            ========================= -->
-      <div class="drawer-wrap" id="drawerWrap" aria-hidden="true">
-        <!-- [JS/UI] Click overlay -> đóng drawer: remove .is-open khỏi #drawerWrap -->
-        <div class="drawer-overlay" id="drawerOverlay"></div>
-
-        <aside class="drawer" role="dialog" aria-label="Side menu">
-          <!-- =========================
-               MODE SELECT
-               ========================= -->
-          <section class="drawer-section" aria-label="Mode">
-            <div class="section-title">
-              <span>Mode</span>
-              <!-- [JS] hiển thị phiên bản engine -->
-              <span class="hint" id="engineHint"
-                >STT: Whisper v3 • TTS: XTTS</span
-              >
-            </div>
-
-            <!--
-              [JS/UI] Mode switch:
-              - value="translate": App dịch thuật (1 endpoint STT+Translate)
-              - value="chat": ESP32 Bot Chat (1 endpoint STT+Chat) preset conv_id=1
-              JS:
-              - set app mode
-              - update labels, show/hide output block name (translated/assistant)
-              - update request payload mapping
-            -->
-            <div class="mode-switch" role="radiogroup" aria-label="Select mode">
-              <label class="mode-opt">
-                <input
-                  type="radio"
-                  name="mode"
-                  value="translate"
-                  id="modeTranslate"
-                  checked
-                />
-                <span class="mode-pill">
-                  <span class="mode-ic" aria-hidden="true">🌐</span>
-                  Translate
-                </span>
-              </label>
-              <label class="mode-opt">
-                <input type="radio" name="mode" value="chat" id="modeChat" />
-                <span class="mode-pill">
-                  <span class="mode-ic" aria-hidden="true">🤖</span>
-                  ESP32 Chat
-                </span>
-              </label>
-            </div>
-
-            <!--
-              [API -> UI] Chat preset info (only for ESP32 Chat mode)
-              JS:
-              - show when mode=chat
-              - ensure preset: conversation_id=1, title=ViAsistant
-            -->
-            <div class="preset-box" id="chatPresetBox" hidden>
-              <div class="preset-row">
-                <span class="preset-k">conversation_id</span>
-                <span class="preset-v" id="conversationIdLabel">1</span>
-              </div>
-              <div class="preset-row">
-                <span class="preset-k">title</span>
-                <span class="preset-v" id="conversationTitleLabel"
-                  >ViAsistant</span
-                >
-              </div>
-            </div>
-          </section>
-
-          <!-- =========================
-               LANGUAGE (Translate mode mainly; Chat mode can still show for future)
-               ========================= -->
-          <section class="drawer-section" aria-label="Language">
-            <div class="section-title">
-              <span>Language</span>
-              <span class="hint">input_lang / output_lang</span>
-            </div>
-
-            <div class="lang-row">
-              <!-- [API -> UI] Input flag -->
-              <div class="flag" id="fromFlag" title="Input language flag">
-                🏳️
-              </div>
-
-              <!-- [JS/UI] Click -> open dropdown select "from" -->
-              <button class="select" id="fromLangBtn" type="button">
-                <span class="select__label" id="fromLangLabel">Loading…</span>
-                <span class="select__chev">▾</span>
-              </button>
-            </div>
-
-            <div class="swap">
-              <!-- [JS/UI] Swap language: from <-> to -->
+      <main class="stage" role="main">
+        <!-- ===== Drawer (Settings panel) ===== -->
+        <aside class="drawer" id="drawer" aria-label="Settings drawer">
+          <div class="drawer-inner">
+            <!-- ---------- Language block ---------- -->
+            <section class="block" aria-label="Language settings">
+              <!-- Hàng chọn ngôn ngữ nguồn -->
               <button
-                class="swap-btn"
-                id="btnSwapLang"
+                class="select-row"
+                id="btnLangFrom"
                 type="button"
-                aria-label="Swap"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-controls="langFromMenu"
               >
-                ↕
-              </button>
-            </div>
+                <!-- Flag: JS có thể thay data-code + text/emoji -->
+                <span class="flag" data-code="XX" aria-hidden="true">🏳️</span>
 
-            <div class="lang-row">
-              <!-- [API -> UI] Output flag -->
-              <div class="flag" id="toFlag" title="Output language flag">
-                🏳️
-              </div>
+                <!-- Label: JS rót vào #langFromLabel -->
+                <span class="select-label" id="langFromLabel"
+                  >Input language</span
+                >
 
-              <!-- [JS/UI] Click -> open dropdown select "to" -->
-              <button class="select" id="toLangBtn" type="button">
-                <span class="select__label" id="toLangLabel">Loading…</span>
-                <span class="select__chev">▾</span>
-              </button>
-            </div>
-
-            <!-- [API -> UI] Dropdown language list -->
-            <!-- JS render data.language.list into #langDropdown by template #tplLangItem -->
-            <div
-              class="dropdown"
-              id="langDropdown"
-              aria-label="Language options"
-            ></div>
-          </section>
-
-          <!-- =========================
-               SETTINGS / INSTRUCTION (4th factor for AI)
-               ========================= -->
-          <section class="drawer-section" aria-label="Instruction">
-            <div class="section-title">
-              <span>Instruction</span>
-              <span class="hint">setting (AI instruction)</span>
-            </div>
-
-            <!--
-              Translate presets:
-              - literal: sát nghĩa
-              - natural: tự nhiên
-              - polite: lịch sự
-              - short: ngắn gọn
-              JS:
-              - when choose preset -> fill textarea (optional)
-            -->
-            <div class="form-row">
-              <label class="label" for="settingPreset">Preset</label>
-              <select class="field field--select" id="settingPreset">
-                <option value="literal" selected>
-                  Translate: Sát nghĩa theo title + history
-                </option>
-                <option value="natural">Translate: Tự nhiên, dễ hiểu</option>
-                <option value="polite">Translate: Lịch sự, trang trọng</option>
-                <option value="short">Translate: Ngắn gọn</option>
-                <option value="chat_short">Chat: Ngắn gọn, thân thiện</option>
-                <option value="chat_polite">Chat: Trợ lý ảo lịch sự</option>
-              </select>
-            </div>
-
-            <!--
-              [JS -> SERVER] setting_text: instruction tự do của user
-              - Translate: "Dịch sát nghĩa theo title và lịch sử chat..."
-              - Chat: "Trả lời ngắn gọn..."
-            -->
-            <div class="form-row">
-              <label class="label" for="settingText">Custom setting</label>
-              <textarea
-                class="field field--textarea"
-                id="settingText"
-                rows="4"
-                placeholder='VD: "Dịch sát nghĩa theo title và lịch sử chat" hoặc "Trả lời ngắn gọn, thân thiện, đúng trọng tâm"'
-              ></textarea>
-            </div>
-
-            <!--
-              [JS/UI] TTS toggle (Coqui XTTS-v2)
-              - If ON: server trả thêm assistant_audio_url / translated_audio_url
-              - If OFF: chỉ text
-            -->
-            <div class="toggle-row">
-              <label class="toggle">
-                <input type="checkbox" id="ttsToggle" checked />
-                <span class="toggle-ui" aria-hidden="true"></span>
-                <span class="toggle-text">Enable TTS (XTTS)</span>
-              </label>
-            </div>
-          </section>
-
-          <!-- =========================
-               TOPIC (history json - Translate) / Conversation (Chat)
-               ========================= -->
-          <section class="drawer-section" aria-label="Topic">
-            <button class="topic-head" type="button" id="btnTopic">
-              <span class="topic-head__left">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M3 6h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                <span id="topicTitle">Topic</span>
-              </span>
-              <span class="topic-head__chev">▾</span>
-            </button>
-
-            <!--
-              [API -> UI] topic list
-              - Translate mode: show topics (title list) for JSON history files
-              - Chat mode: can hide topics or keep (optional)
-            -->
-            <div class="topic-list" id="topicList"></div>
-
-            <!--
-              [JS/UI] Quick actions (optional but useful for demo)
-              - export JSON history
-              - reset chat conversation_id=1
-            -->
-            <div class="drawer-actions">
-              <button class="btn btn--ghost" id="btnExportJson" type="button">
-                Export JSON
-              </button>
-              <button class="btn btn--danger" id="btnResetChat" type="button">
-                Reset Chat (id=1)
-              </button>
-            </div>
-          </section>
-        </aside>
-      </div>
-
-      <!-- =========================
-           MAIN CONTENT
-           ========================= -->
-      <main class="content">
-        <section class="stack">
-          <!-- INFO BAR: show current mode + endpoint hint -->
-          <div class="infobar">
-            <!-- [JS] update when mode changes -->
-            <div class="infobar__left">
-              <span class="badge" id="modeBadge" data-mode="translate"
-                >TRANSLATE</span
-              >
-              <span class="infotext" id="endpointHint">
-                Endpoint: <code>/api/translate_audio</code> (1 request)
-              </span>
-            </div>
-
-            <!-- [JS/UI] processing step -->
-            <!-- JS set: #stepText = "Normalize → STT → AI → TTS" -->
-            <div class="infobar__right">
-              <span class="step" id="stepText">Ready</span>
-            </div>
-          </div>
-
-          <!-- TOP SPLIT -->
-          <div class="panel panel--split">
-            <!-- LEFT (source / stt text) -->
-            <article class="card card--cool" aria-label="STT output">
-              <div class="card__head">
-                <div class="card__icon">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                <span class="chev" aria-hidden="true">
+                  <svg class="icon" viewBox="0 0 24 24">
                     <path
-                      d="M11 4c-3.3 0-6 2.7-6 6v2c0 2 1 3 2 3h1l2 5h2l-1.2-5H14c2.8 0 5-2.2 5-5V9c0-2.8-2.2-5-5-5h-3Z"
-                      fill="currentColor"
-                      opacity="0.9"
-                    />
-                    <path
-                      d="M20 9c1.3 1.3 1.3 4.7 0 6M22 7c2.2 2.2 2.2 7.8 0 10"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                </div>
-
-                <!-- Toolbar actions (STT) -->
-                <div class="toolbar">
-                  <!-- [JS/UI] Copy stt_text -->
-                  <button
-                    class="tool-btn"
-                    id="btnCopySTT"
-                    type="button"
-                    title="Copy STT"
-                  >
-                    Copy
-                  </button>
-
-                  <!-- [JS/UI] Edit STT (optional feature) -->
-                  <button
-                    class="tool-btn"
-                    id="btnEditSTT"
-                    type="button"
-                    title="Edit STT"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-
-              <div class="watermark watermark--sun" aria-hidden="true"></div>
-
-              <!-- [API -> UI] STT text -->
-              <div class="card__text" id="sourceText">
-                <div class="skeleton s1"></div>
-                <div class="skeleton s2"></div>
-                <div class="skeleton s3"></div>
-              </div>
-
-              <!-- [API -> UI] Pager/dots -->
-              <div class="pager" id="sourcePager" aria-hidden="true"></div>
-            </article>
-
-            <!-- RIGHT (translated text OR assistant text) -->
-            <article class="card card--warm" aria-label="AI output">
-              <div class="card__head">
-                <!-- Output title changes by mode -->
-                <div class="card__label">
-                  <!-- [JS] translate: "Translation" | chat: "Assistant" -->
-                  <span id="outputLabel">Translation</span>
-                </div>
-
-                <div class="toolbar">
-                  <!-- [JS/UI] Copy AI output -->
-                  <button
-                    class="tool-btn"
-                    id="btnCopyAI"
-                    type="button"
-                    title="Copy output"
-                  >
-                    Copy
-                  </button>
-
-                  <!-- [JS/UI] Play TTS if server returns audio url -->
-                  <!-- JS: if tts enabled and audio exists -> enable button -->
-                  <button
-                    class="tool-btn"
-                    id="btnPlayTTS"
-                    type="button"
-                    title="Play TTS"
-                    disabled
-                  >
-                    Play
-                  </button>
-                </div>
-              </div>
-
-              <!-- [API -> UI]
-                   translate mode: #targetText = translated_text
-                   chat mode:      #targetText = assistant_text
-              -->
-              <div class="card__text" id="targetText">
-                <div class="skeleton s1"></div>
-                <div class="skeleton s2"></div>
-                <div class="skeleton s3"></div>
-              </div>
-
-              <!-- [JS] hidden audio player for TTS playback -->
-              <!-- JS set: #ttsAudio.src = translated_audio_url or assistant_audio_url -->
-              <audio id="ttsAudio" preload="auto"></audio>
-
-              <div class="pager" id="targetPager" aria-hidden="true"></div>
-            </article>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- BOTTOM (history / detail view) -->
-          <div class="panel panel--single">
-            <article class="card card--warm card--large" aria-label="History">
-              <div class="card__head">
-                <div class="card__icon">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M4 4h10v4H4V4Zm0 6h10v10H4V10Z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                    <path
-                      d="M16 7h6M19 4v6M14 20l4-10 4 10"
+                      d="M6 9l6 6l6-6"
                       fill="none"
                       stroke="currentColor"
                       stroke-width="2"
@@ -467,159 +113,311 @@
                       stroke-linejoin="round"
                     />
                   </svg>
-                </div>
-
-                <div class="card__label">
-                  <!-- [JS] Translate mode: "JSON History (no ID)" | Chat mode: "DB History (conversation_id=1)" -->
-                  <span id="historyLabel">JSON History</span>
-                </div>
-
-                <div class="toolbar">
-                  <!-- [JS/UI] refresh history -->
-                  <button class="tool-btn" id="btnRefreshHistory" type="button">
-                    Refresh
-                  </button>
-                  <!-- [JS/UI] export -->
-                  <button class="tool-btn" id="btnExportHistory" type="button">
-                    Export
-                  </button>
-                </div>
+                </span>
+              </button>
+              <div
+                class="menu"
+                id="langFromMenu"
+                role="listbox"
+                aria-label="Input language options"
+              >
+                <!-- JS render options từ API vào đây -->
               </div>
 
-              <div class="watermark watermark--star" aria-hidden="true"></div>
+              <!-- Nút đổi chiều (swap) -->
+              <button
+                class="swap-btn"
+                id="btnSwapLang"
+                type="button"
+                aria-label="Swap languages"
+              >
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 4v14m0 0l-4-4m4 4l4-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
 
-              <!-- [API -> UI] History / detail / full conversation -->
-              <!-- JS set: #noteText.innerHTML = render(history list) -->
-              <div class="card__text" id="noteText">
-                <!-- empty state -->
-                <div class="empty" id="historyEmpty" hidden>
-                  No history yet. Record something to create messages.
-                </div>
+              <!-- Hàng chọn ngôn ngữ đích -->
+              <button
+                class="select-row"
+                id="btnLangTo"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-controls="langToMenu"
+              >
+                <span class="flag" data-code="YY" aria-hidden="true">🏳️</span>
+                <span class="select-label" id="langToLabel"
+                  >Output language</span
+                >
+
+                <span class="chev" aria-hidden="true">
+                  <svg class="icon" viewBox="0 0 24 24">
+                    <path
+                      d="M6 9l6 6l6-6"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </button>
+
+              <!--
+                Dropdown menu (JS có thể render options từ API).
+                - id dùng để JS target
+                - role listbox/option để dễ làm accessible
+                - mặc định ẩn bằng CSS (JS add .is-open để hiện)
+              -->
+              <div
+                class="menu"
+                id="langToMenu"
+                role="listbox"
+                aria-label="Output language options"
+              >
+                <!-- Placeholder options -->
+                <button
+                  class="menu-item"
+                  role="option"
+                  type="button"
+                  data-lang="l1"
+                >
+                  <span class="flag" aria-hidden="true">🏳️</span>
+                  <span>Language A</span>
+                </button>
+                <button
+                  class="menu-item"
+                  role="option"
+                  type="button"
+                  data-lang="l2"
+                >
+                  <span class="flag" aria-hidden="true">🏳️</span>
+                  <span>Language B</span>
+                </button>
+                <button
+                  class="menu-item"
+                  role="option"
+                  type="button"
+                  data-lang="l3"
+                >
+                  <span class="flag" aria-hidden="true">🏳️</span>
+                  <span>Language C</span>
+                </button>
               </div>
+            </section>
 
-              <div class="pager" id="notePager" aria-hidden="true"></div>
-            </article>
+            <!-- ---------- Topic block ---------- -->
+            <section class="block" aria-label="Topic settings">
+              <!-- Header topic (dạng accordion) -->
+              <button
+                class="block-title"
+                id="btnTopic"
+                type="button"
+                aria-expanded="true"
+                aria-controls="topicList"
+              >
+                <span class="title-left">
+                  <!-- Folder icon -->
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M3 7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <span class="title-text">Topic</span>
+                </span>
+
+                <span class="chev" aria-hidden="true">
+                  <svg class="icon" viewBox="0 0 24 24">
+                    <path
+                      d="M6 9l6 6l6-6"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </button>
+
+              <!-- List topic (JS render từ API vào đây) -->
+              <div class="topic-list" id="topicList" role="list">
+                <!-- Placeholder items -->
+                <button
+                  class="topic-item is-add"
+                  type="button"
+                  id="btnNewTopic"
+                >
+                  <span class="plus">＋</span>
+                  <span>New topic</span>
+                </button>
+                <!-- JS sẽ rót topic vào đây -->
+
+                <!-- Topic items mẫu (JS sẽ thay/append từ API)
+                <button class="topic-item" type="button" data-topic="t1">
+                  Topic One
+                </button>
+                <button class="topic-item" type="button" data-topic="t2">
+                  Topic Two
+                </button>
+                <button class="topic-item" type="button" data-topic="t3">
+                  Topic Three
+                </button> -->
+              </div>
+            </section>
           </div>
+        </aside>
+
+        <!-- Divider giữa drawer và content -->
+        <div class="split-divider" aria-hidden="true"></div>
+
+        <!-- ===== Content area ===== -->
+        <section class="content" id="content" aria-label="Translation content">
+          <!-- Panel 1: nguồn  -->
+          <article class="panel panel-src" aria-label="Source text panel">
+            <!-- Icon góc trái (voice silhouette) -->
+            <div class="panel-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24">
+                <path
+                  d="M11 5a3 3 0 1 1 6 0v6a3 3 0 1 1-6 0V5z"
+                  fill="currentColor"
+                  opacity="0.9"
+                />
+                <path
+                  d="M4 11c0 2.5 2.2 4.5 5 4.5h2"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </div>
+
+            <!-- Nội dung text: JS rót vào #srcText -->
+            <div class="panel-body">
+              <!-- Ô nhập: gõ trực tiếp trong vùng trống -->
+              <textarea
+                id="inputText"
+                class="input-area"
+                placeholder="Type here..."
+                rows="6"
+              ></textarea>
+
+              <!-- Vùng hiển thị text nguồn (khi bạn dùng mic/STT hoặc muốn show lại)
+       JS có thể ẩn/hiện tùy mode -->
+              <div id="srcText" class="src-preview" hidden></div>
+            </div>
+
+            <!-- Dots pagination: JS có thể render số chấm theo câu/đoạn -->
+            <div class="dots" id="srcDots" aria-label="Source pager dots">
+              <span class="dot"></span><span class="dot"></span
+              ><span class="dot"></span> <span class="dot"></span
+              ><span class="dot"></span><span class="dot"></span>
+            </div>
+
+            <!-- Trang trí nền-->
+            <div class="decor decor-sun" aria-hidden="true"></div>
+          </article>
+
+          <!-- Divider ngang giữa 2 panel -->
+          <div class="h-divider" aria-hidden="true"></div>
+
+          <!-- Panel 2: bản dịch  -->
+          <article class="panel panel-dst" aria-label="Translated text panel">
+            <!-- Icon "文A" (dùng text để bạn dễ thay đổi) -->
+            <div class="panel-icon panel-icon-text" aria-hidden="true">文A</div>
+
+            <!-- Nội dung text: JS rót vào #dstText -->
+            <div class="panel-body" id="dstText">
+              <p class="placeholder">
+                Translated text will be injected here from API…
+              </p>
+            </div>
+
+            <div class="dots" id="dstDots" aria-label="Translated pager dots">
+              <span class="dot"></span><span class="dot"></span
+              ><span class="dot"></span> <span class="dot"></span
+              ><span class="dot"></span><span class="dot"></span>
+            </div>
+
+            <!-- Trang trí nền  -->
+            <div class="decor decor-star" aria-hidden="true"></div>
+          </article>
+
+          <!-- Spacer để không bị nút mic che khi scroll -->
+          <div class="content-bottom-spacer" aria-hidden="true"></div>
         </section>
       </main>
 
       <!-- =========================
-           MIC BAR (Web/App record)
-           - ESP32 không dùng UI này, nhưng Web/App dùng để test endpoint.
+           MIC BAR (fixed bottom)
            ========================= -->
-      <footer class="micbar">
+      <footer class="micbar" role="contentinfo">
         <!--
-          [JS/UI] Click mic:
-            - startRecording() / stopRecording()
-            - toggle class .is-recording cho #btnMic
-            - set status: recording/processing
-            - build payload:
-                - title:            from UI (topic/typed)
-                - input_lang:       from UI
-                - output_lang:      from UI
-                - setting:          from #settingText or preset
-                - history:          loaded from server JSON/DB
-                - audio:            wav
+          JS có thể:
+          - toggle body.is-recording
+          - đổi aria-label
         -->
         <button
           class="mic-btn"
           id="btnMic"
-          aria-label="Record"
-          aria-pressed="false"
+          type="button"
+          aria-label="Start recording"
         >
-          <svg class="mic-ic" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"
-              fill="currentColor"
-            />
-            <path
-              d="M19 11a7 7 0 0 1-14 0"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-            <path
-              d="M12 18v3"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
+          <!-- Vòng ngoài -->
+          <span class="mic-ring" aria-hidden="true"></span>
 
-          <!-- recording: solid circle -->
-          <span class="mic-stop" aria-hidden="true"></span>
+          <!-- Vòng trong (màu đỏ) -->
+          <span class="mic-core" aria-hidden="true">
+            <!-- Mic icon (ẩn khi is-recording) -->
+            <svg class="mic-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"
+                fill="none"
+                stroke="white"
+                stroke-width="2"
+              />
+              <path
+                d="M19 11a7 7 0 0 1-14 0"
+                fill="none"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <path
+                d="M12 18v3"
+                fill="none"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
 
-          <!-- processing spinner overlay -->
-          <span class="mic-spinner" aria-hidden="true"></span>
+            <!-- Stop icon (hiện khi is-recording) -->
+            <span class="stop-ico" aria-hidden="true"></span>
+          </span>
         </button>
       </footer>
 
-      <!-- =========================
-           TOAST / ERROR
-           ========================= -->
-      <div
-        class="toast-wrap"
-        id="toastWrap"
-        aria-live="assertive"
-        aria-atomic="true"
-      ></div>
-
-      <!-- =========================
-           TEMPLATES for JS render
-           ========================= -->
-
-      <!-- Language item template -->
-      <template id="tplLangItem">
-        <button class="dropdown-item" type="button" data-id="">
-          <span class="flag flag--mini" data-flag>🏳️</span>
-          <span class="dropdown-text" data-name>—</span>
-        </button>
-      </template>
-
-      <!-- New topic button template -->
-      <template id="tplTopicNew">
-        <button
-          class="topic-item topic-item--new"
-          type="button"
-          id="btnNewTopic"
-        >
-          + New topic
-        </button>
-      </template>
-
-      <!-- Topic item template -->
-      <template id="tplTopicItem">
-        <button class="topic-item" type="button" data-id="">—</button>
-      </template>
-
-      <!-- Dot template -->
-      <template id="tplDot">
-        <span class="dot"></span>
-      </template>
-
-      <!-- History message template (optional) -->
-      <template id="tplMsg">
-        <div class="msg" data-role="">
-          <div class="msg__meta">
-            <span class="msg__role">user</span>
-            <span class="msg__time">—</span>
-          </div>
-          <div class="msg__body">—</div>
-        </div>
-      </template>
-
-      <!-- Toast template -->
-      <template id="tplToast">
-        <div class="toast" data-type="info">
-          <div class="toast__title">Info</div>
-          <div class="toast__msg">—</div>
-        </div>
-      </template>
-
-      <!-- Main JS -->
-      <script src="virecord.js"></script>
+      <!--
+        Scrim (tuỳ bạn dùng overlay hay không).
+        Hiện tại drawer là kiểu push nên scrim không bắt buộc,
+        nhưng vẫn để sẵn để JS bật/tắt nếu muốn click ra ngoài để đóng.
+      -->
+      <div class="scrim" id="scrim" aria-hidden="true"></div>
     </div>
+    <script src="virecord.js"></script>
   </body>
 </html>
