@@ -1,13 +1,7 @@
-/* =========================================================
-   ViRecord UI (HTML/CSS only)
-   - Không chứa JS
-   - Có sẵn class/id để JS/backend rót dữ liệu từ API
-   ========================================================= */
-
-/* ---------- Reset nhẹ ---------- */
-*,
-*::before,
-*::after {
+/* =========================
+   BASE
+========================= */
+* {
   box-sizing: border-box;
 }
 html,
@@ -27,48 +21,44 @@ body {
   background: #fff;
 }
 
-/* ---------- Theme variables ---------- */
 :root {
-  /* Kích thước */
-  --topbar-h: 64px;
-  --micbar-h: 110px;
+  /* JS sẽ set 2 biến nền này */
+  --src-bg: url("photo/tw.png");
+  --dst-bg: url("photo/VN.png");
 
-  /* Drawer */
-  --drawer-w: min(65vw, 360px);
+  /* tint nền (nhẹ thôi, vẫn giống UI) */
+  --src-tint: #eef2ff;
+  --dst-tint: #fdecec;
 
-  /* Màu pastel giống ảnh */
-  --panel-pink: #f6dfe1;
-  --panel-blue: #dfe3f5;
-  --divider: rgba(0, 0, 0, 0.35);
-
-  /* Accent */
-  --accent-red: #ff2b2b;
-
-  /* Bo góc / shadow */
-  --radius: 14px;
+  --border: rgba(0, 0, 0, 0.12);
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
 }
 
-/* =========================================================
+/* =========================
    APP LAYOUT
-   ========================================================= */
+========================= */
 .app {
-  height: 100dvh;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* ---------- TOP BAR ---------- */
+/* TOP BAR */
 .topbar {
-  height: var(--topbar-h);
-  padding: calc(env(safe-area-inset-top) * 0.6) 16px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 64px;
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 56px 1fr 56px;
   align-items: center;
+  padding: 0 10px;
   background: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--border);
 }
 
-.icon-btn {
+.icon-btn,
+.avatar-btn {
   width: 44px;
   height: 44px;
   border: 0;
@@ -78,506 +68,440 @@ body {
   place-items: center;
   cursor: pointer;
 }
-.icon-btn:active {
-  transform: scale(0.98);
+.icon-btn:hover,
+.avatar-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
-.icon {
+.icon-btn svg {
   width: 26px;
   height: 26px;
-  color: #111;
 }
 
 .brand {
-  text-align: center;
-  font-weight: 700;
-  letter-spacing: 0.2px;
+  display: grid;
+  place-items: center;
 }
 .brand-text {
-  display: inline-block;
-}
-
-.brand-right {
-  display: grid;
-  place-items: center;
-}
-.avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #fff;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   font-size: 18px;
 }
-
-/* ---------- STAGE: Drawer + Content ---------- */
-.stage {
-  /* Chiếm toàn bộ phần còn lại, micbar fixed nên content sẽ có spacer */
-  flex: 1;
-  display: flex;
-  position: relative;
-  overflow: hidden;
+.avatar {
+  font-size: 22px;
 }
 
-/* Divider dọc giữa drawer và content (giống ảnh 1) */
-.split-divider {
-  width: 1px;
-  background: var(--divider);
+/* =========================
+   DRAWER
+========================= */
+.drawer-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.drawer-wrap.is-open {
+  pointer-events: auto;
+}
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.12);
   opacity: 0;
-  transition: opacity 220ms ease;
+  transition: opacity 180ms ease;
+  cursor: pointer;
 }
-
-/* =========================================================
-   DRAWER (push style)
-   - Mặc định đóng: width = 0
-   - Khi body.drawer-open: width = --drawer-w
-   ========================================================= */
-.drawer {
-  width: 0;
-  overflow: hidden; /* đóng thì không thấy nội dung */
-  background: #fff;
-  transition: width 240ms ease;
-}
-
-.drawer-inner {
-  width: var(--drawer-w);
-  height: 100%;
-  padding: 12px 12px 18px;
-  overflow: auto;
-}
-
-/* Khi mở drawer */
-body.drawer-open .drawer {
-  width: var(--drawer-w);
-}
-body.drawer-open .split-divider {
+.drawer-wrap.is-open .drawer-backdrop {
   opacity: 1;
 }
 
-/* Các block trong drawer */
-.block {
-  border-radius: 12px;
-  padding: 8px;
-  margin-bottom: 12px;
+.drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: min(360px, 86vw);
+  background: #fff;
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transform: translateX(-100%);
+  transition: transform 220ms ease;
+  padding: 16px 14px;
+  overflow: auto;
+}
+.drawer-wrap.is-open .drawer {
+  transform: translateX(0);
 }
 
-/* ---------- Select rows (language) ---------- */
-.select-row {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 38px 1fr 28px;
+.drawer-section {
+  padding: 12px 6px 18px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.drawer-section:last-child {
+  border-bottom: 0;
+}
+
+/* Language UI */
+.lang-row {
+  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 10px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 12px;
+  margin: 10px 0;
 }
-.select-row:hover {
+
+.lang-select {
+  position: relative;
+  flex: 1;
+}
+
+.lang-btn {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 650;
+  font-size: 18px;
+}
+.lang-btn:hover {
   background: rgba(0, 0, 0, 0.03);
 }
 
-.flag {
-  width: 34px;
-  height: 24px;
-  border-radius: 4px;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
+.lang-flag {
+  width: 26px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #fff;
 }
 
-.select-label {
-  font-size: 22px;
-  font-weight: 650;
-  line-height: 1.05;
+.lang-label {
+  flex: 1;
+  text-align: left;
 }
 
 .chev {
-  display: grid;
-  place-items: center;
-  opacity: 0.9;
+  font-size: 16px;
+  opacity: 0.7;
 }
 
-/* Nút swap ở giữa 2 row */
-.swap-btn {
-  width: 40px;
-  height: 40px;
+.lang-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  display: none;
+  z-index: 5;
+}
+.lang-select.open .lang-menu {
+  display: block;
+}
+
+.lang-item {
+  width: 100%;
   border: 0;
   background: transparent;
-  border-radius: 999px;
+  border-radius: 12px;
+  padding: 10px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 17px;
+}
+.lang-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.lang-item img {
+  width: 26px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.swap-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 14px;
   display: grid;
   place-items: center;
   cursor: pointer;
-  margin: 2px 0 2px 36px; /* canh giống ảnh: nằm gần flag */
 }
 .swap-btn:hover {
   background: rgba(0, 0, 0, 0.04);
 }
-
-/* ---------- Dropdown menu ---------- */
-.menu {
-  margin: 6px 0 0 44px; /* thụt vào dưới label giống ảnh */
-  border-radius: 12px;
-  padding: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: #fff;
-
-  /* Mặc định ẩn: JS có thể add .is-open để hiện */
-  display: none;
-}
-.menu.is-open {
-  display: block;
+.swap-btn svg {
+  width: 22px;
+  height: 22px;
 }
 
-.menu-item {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 38px 1fr;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px;
-  border: 0;
-  background: transparent;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 20px;
-}
-.menu-item:hover {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-/* ---------- Topic accordion header ---------- */
-.block-title {
-  width: 100%;
+/* Topic */
+.topic-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 8px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 12px;
-}
-.block-title:hover {
-  background: rgba(0, 0, 0, 0.03);
-}
-.title-left {
-  display: inline-flex;
-  align-items: center;
   gap: 10px;
-}
-.title-text {
-  font-size: 22px;
+  padding: 8px 6px;
   font-weight: 750;
+  font-size: 18px;
 }
-
-/* ---------- Topic list ---------- */
-.topic-list {
-  margin-top: 4px;
-  padding-left: 36px; /* giống ảnh: list thụt vào dưới icon */
-  display: grid;
-  gap: 6px;
+.topic-title {
+  flex: 1;
 }
-
 .topic-item {
-  text-align: left;
+  width: 100%;
   border: 0;
   background: transparent;
-  padding: 8px 8px;
-  border-radius: 10px;
-  font-size: 20px;
+  text-align: left;
+  padding: 12px 10px;
+  border-radius: 12px;
   cursor: pointer;
+  font-size: 18px;
 }
 .topic-item:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(0, 0, 0, 0.05);
+}
+.topic-list {
+  padding: 4px 0 0;
 }
 
-.topic-item.is-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.plus {
-  font-weight: 900;
-}
-
-/* =========================================================
-   CONTENT AREA
-   ========================================================= */
+/* =========================
+   CONTENT + SPLIT BACKGROUND
+========================= */
 .content {
+  position: relative;
   flex: 1;
+  overflow: hidden;
+}
+
+/* lớp nền chia đôi giống ảnh 2 */
+/* lớp nền chia đôi TRÊN / DƯỚI (src ở trên, dst ở dưới) */
+.lang-split-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lang-split-bg::before,
+.lang-split-bg::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  opacity: 0.18;
+
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+}
+
+/* NỬA TRÊN = ngôn ngữ nguồn */
+.lang-split-bg::before {
+  top: 0;
+  background-image: var(--src-bg);
+  background-color: var(--src-tint);
+}
+
+/* NỬA DƯỚI = ngôn ngữ đích */
+.lang-split-bg::after {
+  bottom: 0;
+  background-image: var(--dst-bg);
+  background-color: var(--dst-tint);
+}
+
+/* Cards layout */
+.cards {
   position: relative;
+  z-index: 2;
+  height: 100%;
   overflow: auto;
-  background: #fff;
+  padding: 14px 14px 110px; /* chừa chỗ cho mic button */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-/* Panel chung */
-.panel {
-  position: relative;
-  min-height: 42vh;
-  padding: 18px 16px 44px;
-  overflow: hidden; /* để decor không tràn */
+/* Card */
+.card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+  padding: 14px 14px 12px;
+  min-height: 220px;
 }
 
-/* Panel 1 (trên): nền chia 2 màu (xanh nhạt trái + hồng nhạt phải) */
-.panel-src {
-  background: linear-gradient(
-    90deg,
-    var(--panel-blue) 0%,
-    var(--panel-blue) 46%,
-    var(--panel-pink) 46%,
-    var(--panel-pink) 100%
-  );
+.card-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
 }
-
-/* Panel 2 (dưới): nền hồng nhạt */
-.panel-dst {
-  background: var(--panel-pink);
-}
-
-/* Icon góc trái trên panel */
-.panel-icon {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  color: rgba(0, 0, 0, 0.65);
-}
-.panel-icon-text {
+.card-ico {
   font-size: 26px;
   font-weight: 800;
+  opacity: 0.85;
 }
 
-/* Nội dung text */
-.panel-body {
-  margin-top: 6px;
-  max-width: 92%;
-}
-.panel-body p {
-  margin: 0;
-  font-size: 17px;
-  line-height: 1.55;
-}
-
-/* Placeholder text (để demo rót dữ liệu) */
-.placeholder {
-  color: rgba(0, 0, 0, 0.6);
+/* Input textarea */
+.card-input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  resize: vertical;
+  min-height: 150px;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1.6;
 }
 
-/* Dots pager */
+/* Output */
+.card-output {
+  width: 100%;
+  min-height: 150px;
+  font-size: 18px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.muted {
+  opacity: 0.55;
+}
+
+/* Dots row */
 .dots {
-  position: absolute;
-  left: 20px;
-  bottom: 16px;
-  display: inline-flex;
-  gap: 9px;
-  align-items: center;
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
 }
-.dot {
+.dots span {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.55);
-  background: transparent;
-  opacity: 0.95;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  opacity: 0.7;
 }
 
-/* Divider ngang giữa 2 panel */
-.h-divider {
-  height: 1px;
-  background: rgba(0, 0, 0, 0.18);
-}
-
-/* Decor (mờ giống ảnh) */
-.decor {
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.25;
-  filter: blur(0.2px);
-}
-
-/* Mặt trời: góc trái trên của panel-src */
-.decor-sun {
-  width: 210px;
-  height: 210px;
-  left: 46px;
-  top: 26px;
-  background:
-    radial-gradient(
-      circle at center,
-      rgba(255, 255, 255, 0.9) 0 34%,
-      transparent 35%
-    ),
-    conic-gradient(
-      from 0deg,
-      rgba(255, 255, 255, 0.9) 0 10deg,
-      transparent 10deg 20deg
-    );
-  border-radius: 999px;
-  /* Tạo tia đơn giản bằng mask */
-  mask: radial-gradient(circle at center, #000 0 60%, transparent 61%);
-}
-
-/* Ngôi sao: giữa panel-dst */
-.decor-star {
-  width: 260px;
-  height: 260px;
-  left: 50%;
-  top: 46%;
-  transform: translate(-50%, -50%);
-  background: rgba(255, 255, 200, 0.9);
-  clip-path: polygon(
-    50% 0%,
-    61% 35%,
-    98% 35%,
-    68% 57%,
-    79% 91%,
-    50% 70%,
-    21% 91%,
-    32% 57%,
-    2% 35%,
-    39% 35%
-  );
-}
-
-/* Spacer để cuối content không bị mic che */
-.content-bottom-spacer {
-  height: calc(var(--micbar-h) + env(safe-area-inset-bottom));
-}
-
-/* =========================================================
-   MIC BAR (fixed bottom, giống ảnh)
-   ========================================================= */
-.micbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--micbar-h);
-  padding-bottom: env(safe-area-inset-bottom);
-  background: #fff;
-  display: grid;
-  place-items: center;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-/* Nút mic */
+/* Mic button (UI) */
 .mic-btn {
-  width: 86px;
-  height: 86px;
-  border: 0;
-  background: transparent;
-  position: relative;
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: 76px;
+  height: 76px;
+  border-radius: 999px;
+  border: 6px solid rgba(0, 0, 0, 0.08);
+  background: #ff2b2b;
+  color: #fff;
   display: grid;
   place-items: center;
   cursor: pointer;
+  z-index: 3;
 }
-.mic-btn:active {
-  transform: scale(0.985);
-}
-
-/* Vòng ngoài (giống viền) */
-.mic-ring {
-  position: absolute;
-  inset: 8px;
-  border-radius: 999px;
-  border: 3px solid rgba(0, 0, 0, 0.15);
+.mic-btn svg {
+  width: 34px;
+  height: 34px;
 }
 
-/* Core đỏ */
-.mic-core {
-  width: 56px;
-  height: 56px;
-  border-radius: 999px;
-  background: var(--accent-red);
-  display: grid;
-  place-items: center;
-}
+/* =========================
+   RESPONSIVE (desktop)
+========================= */
+@media (min-width: 900px) {
+  .cards {
+    padding: 18px 22px 120px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
 
-/* Icon mic */
-.mic-ico {
-  width: 30px;
-  height: 30px;
-}
-
-/* Stop icon (ẩn mặc định) */
-.stop-ico {
-  width: 22px;
-  height: 22px;
-  background: #fff;
-  border-radius: 4px;
-  display: none;
-}
-
-/* =========================================================
-   RECORDING STATE (giống ảnh 3: nút thành "stop")
-   - JS chỉ cần add class body.is-recording
-   ========================================================= */
-body.is-recording .mic-ico {
-  display: none;
-}
-body.is-recording .stop-ico {
-  display: block;
-}
-
-/* =========================================================
-   SCRIM (tuỳ chọn)
-   - Nếu bạn muốn kiểu overlay: JS bật opacity + pointer-events
-   ========================================================= */
-.scrim {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms ease;
-}
-body.drawer-open .scrim {
-  opacity: 0; /* drawer push nên để 0; nếu muốn overlay thì chỉnh lên 1 */
-}
-
-/* =========================================================
-   RESPONSIVE NOTES
-   - Nếu màn lớn: vẫn ok vì drawer push
-   - Nếu muốn drawer overlay ở màn nhỏ: bạn có thể đổi logic width/position
-   ========================================================= */
-@media (min-width: 880px) {
-  :root {
-    --drawer-w: 360px;
+  /* drawer mở trên desktop vẫn overlay (giống ảnh 1) */
+  .drawer {
+    width: min(360px, 75vw); /* 3/4 màn hình */
   }
 }
-/* Ô nhập nằm trong panel trên, nhìn như vùng trống của app */
-.input-area {
-  width: 100%;
-  min-height: 170px; /* chỉnh theo đúng cảm giác khoảng trống */
-  resize: none; /* không cho kéo góc */
-  border: 0; /* bỏ viền */
-  outline: none; /* bỏ viền focus mặc định */
-  background: transparent; /* hoà vào nền panel */
-  font-size: 17px;
-  line-height: 1.6;
-  color: rgba(0, 0, 0, 0.85);
-  padding: 8px 6px;
+
+/* =========================
+   PHONE FRAME CENTER (DESKTOP)
+========================= */
+
+/* nền ngoài giống kiểu đặt 1 chiếc phone ở giữa */
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f3f4f6; /* nền xám nhẹ */
 }
 
-/* Placeholder mềm hơn */
-.input-area::placeholder {
-  color: rgba(0, 0, 0, 0.45);
+/* khung điện thoại */
+.phone-frame {
+  width: min(420px, 100%);
+  height: min(860px, 92vh);
+  background: #fff;
+  border-radius: 34px;
+  overflow: hidden;
+  position: relative;
+
+  /* viền + đổ bóng giống đặt 1 chiếc phone */
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
 }
 
-/* Nếu muốn khi focus có “nhẹ nhàng” một chút */
-.input-area:focus {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 10px;
+/* app luôn fill đầy khung */
+.phone-frame .app {
+  height: 100%;
 }
 
-/* Vùng preview (khi bạn không muốn textarea) */
-.src-preview {
-  font-size: 17px;
-  line-height: 1.6;
-  padding: 8px 6px;
+/* QUAN TRỌNG:
+   Drawer của bạn đang dùng position: fixed (phủ full màn hình).
+   Khi cho vào phone-frame, ta đổi nó thành absolute để chỉ phủ trong khung phone.
+*/
+.phone-frame .drawer-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+/* =========================
+   MOBILE: full màn hình như bình thường
+========================= */
+@media (max-width: 600px) {
+  .page {
+    padding: 0;
+    background: #fff;
+  }
+
+  .phone-frame {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  /* trên mobile vẫn ok: drawer phủ trong full màn hình */
+  .phone-frame .drawer-wrap {
+    position: fixed; /* hoặc để absolute cũng vẫn ổn vì frame full */
+  }
+}
+.phone-frame .drawer {
+  width: 75%;
+}
+
+/* đồng bộ spacing giữa ô nhập và ô output */
+.card-input,
+.card-output {
+  margin: 0;
+  padding: 0;
 }
