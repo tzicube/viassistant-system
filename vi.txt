@@ -1,192 +1,190 @@
-Thiết kế thêm tính năng cho hệ thống
-Bao gồm 1 bot chat sử dụng esp32s và 1 app dịch thuật sử dụng a.i
-sử dụng
-STT (Speech-to-Text): Whisper large-v3
-TTS (Text-to-Speech): Coqui XTTS-v2
-
-1 .App dịch thuật bằng A.I
-
-FLOW TỔNG THỂ – STT + TRANSLATE (1 ENDPOINT)
-Mục tiêu
-
-Nhận audio
-
-Chuyển giọng nói → text
-
-Sử dụng a.i dịch text → ngôn ngữ đích
-
-Trả về text gốc + text đã dịch
-
-lưu tạm vào 1 file json ( tất cả hội thoại ) 
-
-1) INPUT (Client → Server)
-
-Client gửi 1 request duy nhất:
-
-title: Chủ đề dịch (chỉ để hiển thị / context)
-
-input_lang: Ngôn ngữ đầu vào (en, vi,....)
-
-output_lang: Ngôn ngữ sau dịch (vi, en, …)
-Yêu cầu là đưa vào cho a.i 4 yếu tố 
-- history : toàn bộ file json 
-- title : Từ đầu vào người dùng
-- text : nội dung sau stt
-- setting yêu cầu dịch vd : "Dịch sát nghĩa theo tile và lịch sử chat "
-
-audio: File âm thanh (wav)
-
-2) SERVER – XỬ LÝ TỪNG BƯỚC
-Bước 1: Nhận & kiểm tra dữ liệu
-
-Kiểm tra có file audio hay không
-
-Kiểm tra input_lang và output_lang
-
-Nếu thiếu → trả lỗi
-
-Bước 2: Chuẩn hoá audio
-
-Convert audio về:
-
-wav
-
-16 kHz
-
-Mono
-
-Mục tiêu: đảm bảo STT ổn định
-
-Bước 3: STT (Speech → Text)
-
-Đưa audio vào Whisper
-
-Nhận kết quả:
-
-stt_text: nội dung người nói
-
-Bước 4: Xác định ngôn ngữ đầu vào
-
-Dùng đúng input_lang client gửi
-
-Bước 5: DỊCH (Translate bằng AI)
-
-Dùng AI để dịch:
-
-từ input_lang
-
-sang output_lang
-
-
-3) OUTPUT (Server → Client)
-
-Server trả JSON duy nhất:
-
-{
-  "title": "Travel conversation",
-  "input_lang": "en",
-  "output_lang": "vi",
-  "stt_text": "Where is the nearest MRT station?",
-  "translated_text": "Ga MRT gần nhất ở đâu?"
-}
-
-4) FLOW 1 DÒNG (để vẽ sơ đồ)
-
-Audio → Normalize → Whisper STT → stt_text → AI Translate → translated_text → JSON
-
-5) Đặc điểm flow (để ghi chú)
-
-
-
-Không ID
-
-Dùng cho: 
-
-Test STT
-
-Test dịch AI
-
-ESP32 / App đều dùng được
-2. ESP32S Bot Chat – GIAO TIẾP (DEMO)
-FLOW TỔNG THỂ – STT + AI CHAT (1 ENDPOINT)
-Mục tiêu
-
-ESP32 gửi audio
-
-Server STT → ra stt_text
-
-Server gọi AI → ra assistant_text (hội thoại tự nhiên)
-
-Trả về assistant_text cho ESP32 (ESP32 hiển thị / xử lý tiếp)
-
-Lưu DB 2 bên với preset:
-
-conversation_id = 1
-
-title = "ViAsistant"
-
-1) INPUT (ESP32 → Server)
-
-ESP32 gửi 1 request:
-
-audio: wav
-
-setting (tuỳ chọn): kiểu trả lời, ví dụ:
-
-“Trả lời ngắn gọn, thân thiện, đúng trọng tâm”
-
-“Nói như trợ lý ảo, xưng hô lịch sự”
-
-Preset
-
-conversation_id = 1
-
-title = "ViAsistant"
-
-AI nhận 4 yếu tố
-
-history: messages trong DB của conversation_id=1
-
-title: ViAsistant
-
-text: stt_text
-
-setting: instruction (nếu có)
-
-2) SERVER – XỬ LÝ
-
-Validate có audio
-
-Set preset conversation_id=1, title="ViAsistant" và đảm bảo DB có conversation 1
-
-Normalize audio → WAV 16k mono
-
-Whisper STT → stt_text
-
-Lưu message USER vào DB (id=1)
-
-Load history (id=1) + build prompt → gọi AI → assistant_text
-
-Lưu message ASSISTANT vào DB (id=1)
-
-Trả response JSON
-
-3) OUTPUT (Server → ESP32)
-{
-  "conversation_id": 1,
-  "title": "ViAsistant",
-  "stt_text": "How was your day?",
-  "assistant_text": "It was good. How about yours?"
-}
-
-4) FLOW 1 dòng
-
-ESP32 Audio → Normalize → Whisper STT → stt_text → Save(user) DB(id=1) → Load history DB(id=1) → AI Chat → assistant_text → Save(assistant) DB(id=1) → JSON
-
-5) Ghi chú (đúng mục tiêu “giao tiếp trước”)
-
-Không phân tích intent
-
-Không bật/tắt thiết bị
-
-Chỉ hội thoại tự nhiên + lưu DB để có ngữ cảnh
+Phân Tích Workspace ViProject
+1. Danh Sách Thư Mục & File Quan Trọng
+Backend (backend)
+Core Django Config
+config/settings.py — Cấu hình Django: DB (MySQL), CORS, WebSocket (Daphne), Ollama API, AI System Prompt
+config/asgi.py — ASGI entrypoint: gộp WebSocket routes từ chatapp & vitranslation
+config/urls.py — URL routing chính
+manage.py — Django management entrypoint
+Chat Module (chatapp/)
+chatapp/views.py — HTTP endpoints: create_conversation, chat_stream, translate_audio; streaming responses via Ollama
+chatapp/consumers.py — WebSocket consumer (ViChatConsumer): real-time chat delta streaming
+chatapp/routing.py — WebSocket URL pattern: /ws/vichat/
+chatapp/models.py — DB models: Conversation, Message, AppMemory (chưa show, nhưng được dùng)
+chatapp/memory.py — Helper: get_app_memory, format_app_memory_text, get_history_messages
+chatapp/urls.py — HTTP routes: /api/creatnew, /api/conversations, /api/chat/stream
+ViTranslation Module (vitranslation/)
+ViRecord Realtime Translation (vitranslation/virecord/)
+virecord/consumers.py — WebSocket consumer: 3 parallel async lines (STT, Translation realtime, Summary 10s)
+virecord/routing.py — WebSocket URL: /ws/virecord/
+virecord/memory.py — SessionMemory dataclass: trạng thái session (STT, translate, context)
+virecord/history_fs.py — File system I/O: new_session, read/write source/target, build_title_context_tail
+virecord/urls.py — HTTP API: /api/new_topic, /api/record_history, /api/record_detail
+virecord/views.py — HTTP handlers (chưa show chi tiết)
+AI Engine (vitranslation/ai_engine/)
+ai_engine/translator.py — Async translation: stream_translate_segment_async(), final_translate_full()
+ai_engine/summarizer.py — Summary generation: make_summary()
+ai_engine/ollama_client.py — (chưa show) Ollama HTTP client: generate(), generate_stream()
+ai_engine/prompts.py — Prompt builders: translate_segment_prompt(), final_translate_prompt(), summary_prompt()
+ai_engine/config.py — Ollama config: URL, model, timeout
+STT Engine (stt_engine/)
+stt_engine/stream.py — RealtimeWhisperStreamer: buffer PCM16, transcribe mỗi ~0.8s
+stt_engine/whisper_gpu.py — (chưa show) Whisper inference: transcribe_wav()
+stt_engine/config.py — WhisperConfig dataclass
+History Storage
+vitranslation/history/ — Folder tree: mỗi session = YYYY-MM-DD_HH-MM-SS/ chứa:
+meta.json — title_id, title_name, created_at
+source.txt — source text (lines)
+target.txt — translated text (lines)
+Frontend (frontend)
+Chat App (chat/)
+chat/chat.html — Main UI: sidebar (history), topbar, messages, input
+chat/chat.js — Main logic: WS client (ViChatConsumer), CRUD conversations, streaming delta messages
+chat/chat.css — Dark theme, responsive layout, animations
+ViRecord App (virecord/)
+virecord/virecord.html — Dashboard: lang selector, source/target cards, session history
+virecord/virecord.js — (chưa show chi tiết) WS client (ViRecordConsumer), audio recording, realtime display
+virecord/virecord.css — (chưa show chi tiết) Layout & styling
+Root Docs
+vi.txt — Specification: flow diagram, endpoints, requirements cho 2 apps (Chat & ViRecord)
+git.gitignore — (hoặc .gitignore) Ignore patterns
+2. Công Dụng Chi Tiết (Per File)
+File	Công Dụng
+settings.py	DB config, CORS, Ollama, AI system prompt
+asgi.py	WebSocket routing + Django HTTP
+consumers.py	Real-time chat via WS: build messages, stream Ollama
+views.py	HTTP: POST create conversation, GET history, SSE stream chat
+consumers.py	3 parallel tasks: STT (Whisper), Translate (realtime), Summary (10s)
+history_fs.py	File CRUD: session folder, source/target append, context tail
+translator.py	Async call Ollama translate (segment + final)
+prompts.py	Jinja-like templates: prompt builders
+stream.py	Buffer PCM → WAV → Whisper (mỗi 0.8s)
+chat.js (FE)	WS connect, message UI, CRUD conversation
+virecord.js (FE)	WS connect, audio record, realtime delta display
+3. Kiến Trúc Tổng Thể & Luồng Xử Lý Chính
+Kiến Trúc
+┌─────────────────────────────────────────────────────────┐
+│                   Frontend (2 Apps)                       │
+│  ┌──────────────────┐  ┌──────────────────────────────┐  │
+│  │   chat/          │  │  virecord/                   │  │
+│  │  HTML + JS + CSS │  │  HTML + JS + CSS             │  │
+│  │  (Chat WS)       │  │  (ViRecord WS + Audio)       │  │
+│  └─────────┬────────┘  └──────────┬───────────────────┘  │
+└────────────┼──────────────────────┼────────────────────────┘
+             │ WS /ws/vichat/       │ WS /ws/virecord/
+             │ + HTTP /api/         │ + Audio chunks
+             │                      │
+┌────────────▼──────────────────────▼────────────────────────┐
+│              Backend (Django + Daphne)                      │
+│                                                              │
+│  ┌─────────────────────┐    ┌──────────────────────────┐   │
+│  │  Chat Module        │    │  ViTranslation Module    │   │
+│  │  ┌─────────────────┐│    │  ┌────────────────────┐  │   │
+│  │  │ ViChatConsumer  ││    │  │ ViRecordConsumer   │  │   │
+│  │  │ (WS: delta)     ││    │  │ (WS: 3x parallel)  │  │   │
+│  │  ├─────────────────┤│    │  │                    │  │   │
+│  │  │ views.py        ││    │  │ [Line1] STT        │  │   │
+│  │  │ (HTTP)          ││    │  │ [Line2] Translate  │  │   │
+│  │  └─────────────────┘│    │  │ [Line3] Summary    │  │   │
+│  └─────────────────────┘    │  └────────────────────┘  │   │
+│                              │                          │   │
+│           ┌──────────────────┴──────────────────────┐   │   │
+│           │     AI Engine (Shared)                  │   │   │
+│           │  ├─ translator.py (Ollama stream)      │   │   │
+│           │  ├─ summarizer.py (Ollama gen)        │   │   │
+│           │  ├─ prompts.py (Prompt builders)      │   │   │
+│           │  └─ ollama_client.py (HTTP)           │   │   │
+│           │                                        │   │   │
+│           │     STT Engine (Realtime)             │   │   │
+│           │  ├─ stream.py (PCM buffer)            │   │   │
+│           │  └─ whisper_gpu.py (Inference)        │   │   │
+│           └─────────────────────────────────────────┘   │   │
+│                                                          │   │
+│           ┌──────────────────────────────────────────┐   │   │
+│           │  History FS (File System)                │   │   │
+│           │  vitranslation/history/YYYY-MM-DD.../   │   │   │
+│           │  ├─ meta.json                           │   │   │
+│           │  ├─ source.txt                          │   │   │
+│           │  └─ target.txt                          │   │   │
+│           └──────────────────────────────────────────┘   │   │
+└──────────────────────────────────────────────────────────┘   │
+             │                        │
+             ▼                        ▼
+    ┌──────────────────┐    ┌───────────────────┐
+    │  MySQL DB        │    │  Ollama (LLM)     │
+    │  (Conversations, │    │  (gemma2:9b)      │
+    │   Messages)      │    │                   │
+    └──────────────────┘    └───────────────────┘
+    Luồng Chính
+Flow 1: Chat (ViChatConsumer)
+FE WS → {type: "chat.send", text}
+  │
+  ├─ HTTP POST /api/creatnew (if new conversation)
+  │   └─ Create conversation + first assistant message
+  │
+  └─ WS stream (if existing conversation)
+      ├─ Save user message to DB
+      ├─ Load history + format prompt (system + app_memory + history)
+      ├─ Call Ollama stream_translate_segment_async()
+      │  └─ Yield token by token
+      ├─ Send WS {type: "chat.delta", text_delta: "..."}
+      ├─ Save assistant message to DB
+      └─ Send WS {type: "chat.done"}
+Flow 2: ViRecord (ViRecordConsumer)
+FE WS → {type: "init", title_id, stt_language, translate_source, translate_target}
+  │
+  ├─ Spawn 3 parallel async tasks:
+  │
+  │  [Line 1] STT (mỗi 0.8s)
+  │  ├─ Receive {type: "audio.chunk", pcm16_b64}
+  │  ├─ Push to Whisper streamer
+  │  ├─ transcribe_cumulative() → stt_full
+  │  └─ Send WS {type: "stt.delta", delta: "..."}
+  │
+  │  [Line 2] Realtime Translation
+  │  ├─ Poll stt_cumulative (new segment)
+  │  ├─ Call stream_translate_segment_async() (async)
+  │  │  └─ Prompt includes: title_context_tail + summary_context
+  │  └─ Send WS {type: "translation.delta", delta: "..."}
+  │
+  │  [Line 3] Summary (every 10s)
+  │  ├─ Build combined source (committed + live)
+  │  ├─ Call make_summary() → AI summarize
+  │  └─ Send WS {type: "summary.update", summary: "..."}
+  │
+  └─ On {type: "stop"}
+      ├─ Wait 0.4s (grace time)
+      ├─ Build full_src (committed + live)
+      ├─ Call final_translate_full() (final re-translate)
+      ├─ Write source.txt + target.txt
+      ├─ Save title_context_tail for next session
+      ├─ Send WS {type: "final.result", source, target, summary}
+      └─ Shutdown tasks
+4. File Entrypoint, Core Logic, I/O, Realtime
+Entrypoint
+Backend: manage.py → runs via daphne (ASGI)
+Frontend:
+Chat: chat/chat.html + chat/chat.js
+ViRecord: virecord/virecord.html + virecord/virecord.js
+Core Logic
+Chat AI: chatapp/consumers.py (ViChatConsumer)
+ViRecord Translation: vitranslation/virecord/consumers.py (ViRecordConsumer)
+Ollama Integration: vitranslation/ai_engine/translator.py (stream_translate_segment_async, final_translate_full)
+I/O
+HTTP: chatapp/views.py, vitranslation/virecord/views.py
+File System: vitranslation/virecord/history_fs.py
+Database: Models in chatapp/models.py (Conversation, Message, AppMemory)
+Realtime
+WebSocket Consumers:
+chatapp/consumers.py — chat delta streaming
+vitranslation/virecord/consumers.py — 3-line parallel streaming (STT + Translation + Summary)
+Async Helpers:
+vitranslation/ai_engine/translator.py — stream_translate_segment_async() (threading + asyncio queue)
+stt_engine/stream.py — RealtimeWhisperStreamer (buffer + cumulative transcribe)
+=== ADDITIONAL CONTEXT ===
+
+- Ollama URL: http://127.0.0.1:11434 (gemma2:9b)
+- MySQL: root@127.0.0.1:3306/vichat
+- Frontend: http://127.0.0.1:5500 (Live Server)
+- Backend: http://127.0.0.1:8000 (Daphne)
+- WebSocket: ws://127.0.0.1:8000/ws/vichat/ & ws://127.0.0.1:8000/ws/virecord/

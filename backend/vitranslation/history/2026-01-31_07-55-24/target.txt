@@ -1,0 +1,23 @@
+Chào mừng các bạn, hôm nay chúng ta bắt đầu
+
+Hôm nay chúng ta bắt đầu giảng dạy khóa học về lập trình C.
+
+Hôm nay chúng ta bắt đầu giảng dạy khóa học về lập trình do C giáo sư hướng dẫn.
+
+Hôm nay chúng ta bắt đầu giảng dạy khóa học về lập trình do C giáo sư hướng dẫn. 
+
+Hôm nay chúng ta bắt đầu giảng dạy khóa học về lập trình do C giáo sư hướng dẫn, ngày hôm nay là buổi đầu tiên.
+
+Chúng tôi sẽ nói về cách cài đặt phần mềm và thực hiện chương trình đầu tiên.
+
+Chúng tôi sẽ nói về cách cài đặt phần mềm và thực hiện chương trình đầu tiên. 
+
+Khóa học của chúng tôi không tập trung vào lịch sử và môi trường ứng dụng của ngôn ngữ C, mà trực tiếp hướng đến việc thực hành.
+
+Và thực hiện chương trình đầu tiên. Khóa học của chúng tôi không tập trung vào lịch sử của ngôn ngữ này cũng như môi trường nó có thể được sử dụng. Chúng tôi tin rằng các bạn đều có thể tìm thấy những kiến thức này một cách dễ dàng. 
+
+Khóa học của chúng tôi sẽ giúp các bạn nhanh chóng nắm bắt và thực hiện mã nguồn.
+
+Hôm nay, chúng ta sẽ tập trung vào hai nội dung chính:
+
+Thứ nhất là viết chương trình đầu tiên tốt nhất.

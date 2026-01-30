@@ -5,6 +5,7 @@ import asyncio
 import base64
 import time
 import logging
+import re
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from stt_engine.config import WhisperConfig
@@ -28,28 +29,85 @@ from .history_fs import (
 
 logger = logging.getLogger("virecord")
 
+# punctuation triggers immediate commit
+_PUNCT_RE = re.compile(r"[.!?。！？]")
+
+# =========================
+# TUNING
+# =========================
+MIN_COMMIT_CHARS = 10      # 12-16 nếu còn vụn
+PAUSE_SEC = 0.5           # 1.4-1.8 nếu commit quá sớm
+TICK = 0.18                # loop tick
+
 
 def _safe_lang(x: str) -> str:
     return (x or "").strip().lower()
 
 
 def _b64_to_bytes(b64: str) -> bytes:
-    # b64 string -> raw bytes (PCM16 LE)
     return base64.b64decode((b64 or "").encode("utf-8"))
+
+
+def _norm_space(s: str) -> str:
+    # normalize for COMMIT only
+    return " ".join((s or "").split())
+
+
+def _split_commit_by_punct(draft_raw: str) -> tuple[int, str, str]:
+    """
+    Return (cut_idx, commit_raw, remain_raw)
+    cut_idx: index in draft_raw (raw, not normalized)
+    """
+    if not draft_raw:
+        return 0, "", ""
+    matches = list(_PUNCT_RE.finditer(draft_raw))
+    if not matches:
+        return 0, "", draft_raw
+
+    cut_idx = matches[-1].end()
+    commit_raw = draft_raw[:cut_idx]
+    remain_raw = draft_raw[cut_idx:]  # DO NOT strip here (cursor safety)
+    # UI can lstrip later
+    return cut_idx, commit_raw, remain_raw
+
+
+def _avoid_cut_mid_word(full_raw: str, cur: int) -> int:
+    """
+    If cur falls between alnum characters (mid-word), move cur left to a boundary.
+    This prevents commit slicing inside a token when STT rewrites slightly.
+    """
+    n = len(full_raw)
+    cur = max(0, min(cur, n))
+    if cur <= 0 or cur >= n:
+        return cur
+
+    def is_word(ch: str) -> bool:
+        return ch.isalnum() or ch in ("_",)
+
+    # If boundary is safe, keep
+    if not (is_word(full_raw[cur - 1]) and is_word(full_raw[cur])):
+        return cur
+
+    # Move left until boundary
+    i = cur
+    while i > 0 and i < n and (is_word(full_raw[i - 1]) and is_word(full_raw[i])):
+        i -= 1
+    return i
 
 
 class ViRecordConsumer(AsyncJsonWebsocketConsumer):
     """
-    FE -> BE (theo FE hiện tại của anh):
+    FE -> BE:
       - {type:"init", title_id, title_name, stt_language, translate_source, translate_target}
       - {type:"audio.chunk", pcm16_b64}
-      - {type:"utt.commit"}  (FE cũ)
-      - {type:"stop"}        (FE mới)  -> BE support cả 2
+      - {type:"stop"} or {type:"utt.commit"}
 
-    BE -> FE (schema mới realtime):
-      - {"type":"stt.delta","delta":"..."}                 # append-only
-      - {"type":"translation.delta","delta":"..."}         # append-only realtime
-      - {"type":"summary.update","summary":"..."}          # optional mỗi 10s
+    BE -> FE:
+      - {"type":"stt.delta","text":"..."}                 # live draft (REPLACE on UI)
+      - {"type":"stt.commit","text":"..."}               # committed source segment (APPEND)
+      - {"type":"translation.delta","delta":"..."}       # streaming translation delta (append to live)
+      - {"type":"translation.commit","text":"..."}       # committed translation segment (APPEND)
+      - {"type":"summary.update","summary":"..."}
       - {"type":"final.result","source":"...","target":"...","summary":"..."}
       - {"type":"error","error":"..."}
     """
@@ -59,8 +117,11 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         self.mem = SessionMemory()
 
         self.audio_q: asyncio.Queue[bytes] = asyncio.Queue()
+        self.commit_q: asyncio.Queue[str] = asyncio.Queue()
+
         self._tasks: list[asyncio.Task] = []
         self._inited = False
+        self._stop_event = asyncio.Event()
 
         logger.warning("[connect] client connected")
 
@@ -123,34 +184,40 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
 
         ensure_session(self.mem.title_id, self.mem.title_name)
 
-        # load history for this title (dịch theo title)
+        # persisted history for context
         prev_src, prev_tgt = read_source_target(self.mem.title_id)
         self.mem.committed_source = (prev_src or "").strip()
         self.mem.committed_target = (prev_tgt or "").strip()
         self.mem.title_context_tail = build_title_context_tail(prev_src, prev_tgt)
 
         # runtime buffers
-        self.mem.stt_cumulative = ""
-        self.mem.tr_cumulative = ""
+        self.mem.stt_cumulative = ""          # RAW full STT current recording (NO strip)
         self.mem.summary_context = ""
-        self.mem._stt_last_emit = ""
-        self.mem._tr_last_emit = ""
-        self.mem._tr_last_src_len = 0
         self.mem.last_audio_ts = time.time()
+
+        # cursor into stt_cumulative (RAW chars)
+        self.mem._stt_committed_len = 0
+        self.mem._last_commit_hash = 0
+        self.mem.last_stt_update_ts = time.time()
+
+        self.mem.session_src_segments = []
+        self.mem.session_tgt_segments = []
+        self.mem._translating = False
 
         self._tasks = [
             asyncio.create_task(self._line1_stt(), name="line1_stt"),
-            asyncio.create_task(self._line2_translate_realtime(), name="line2_translate"),
+            asyncio.create_task(self._pause_commit_loop(), name="pause_commit"),
+            asyncio.create_task(self._line2_translate_commits(), name="line2_translate_commits"),
             asyncio.create_task(self._line3_summary_10s(), name="line3_summary"),
         ]
-
-        # attach done callbacks
         for task in self._tasks:
             task.add_done_callback(self._task_done)
 
         self._inited = True
-        logger.warning("[init] OK title_id=%s stt=%s tr=%s->%s",
-                       self.mem.title_id, self.mem.stt_language, self.mem.translate_source, self.mem.translate_target)
+        logger.warning(
+            "[init] OK title_id=%s stt=%s tr=%s->%s",
+            self.mem.title_id, self.mem.stt_language, self.mem.translate_source, self.mem.translate_target
+        )
 
     def _task_done(self, t: asyncio.Task):
         try:
@@ -163,21 +230,58 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         else:
             logger.warning("[task_done] %s", t.get_name())
 
-    # =========================
-    # Line 1: STT realtime -> stt.delta
-    # =========================
+    # =========================================================
+    # Commit helpers
+    # =========================================================
+    async def _commit_source_segment(self, segment_raw: str):
+        # normalize only at commit time
+        segment = _norm_space(segment_raw).strip()
+        if not segment:
+            return
+        if len(segment) < MIN_COMMIT_CHARS:
+            return
+
+        h = hash(segment)
+        if h == getattr(self.mem, "_last_commit_hash", 0):
+            return
+        self.mem._last_commit_hash = h
+
+        self.mem.session_src_segments.append(segment)
+        await self.commit_q.put(segment)
+
+        await self.send_json({"type": "stt.commit", "text": segment})
+
+    async def _flush_draft_commit(self):
+        full_raw = (self.mem.stt_cumulative or "")  # NO strip
+        cur = int(getattr(self.mem, "_stt_committed_len", 0))
+        cur = max(0, min(cur, len(full_raw)))
+        cur = _avoid_cut_mid_word(full_raw, cur)
+        self.mem._stt_committed_len = cur
+
+        draft_raw = full_raw[cur:]
+        # For end-flush, we can trim whitespace at ends safely for commit content only:
+        if draft_raw and _norm_space(draft_raw).strip():
+            self.mem._stt_committed_len = len(full_raw)
+            await self._commit_source_segment(draft_raw)
+
+    # =========================================================
+    # Line 1: STT realtime -> stt.delta (live draft)
+    # =========================================================
     async def _line1_stt(self):
         logger.warning("[line1] start stt")
+
         cfg = WhisperConfig(
             model_size="small",
             device="cuda",
             compute_type="float16",
-            language=self.mem.stt_language,  # en/vi/zh
-            vad_filter=False,               # tắt để tránh onnxruntime
+            language=self.mem.stt_language,  # en/vi/zh (or set None if you want auto)
+            vad_filter=False,               # keep as your design
+            beam_size=1,
         )
         streamer = RealtimeWhisperStreamer(cfg)
 
         while not self.mem.stopped:
+            # feed audio
             try:
                 pcm = await asyncio.wait_for(self.audio_q.get(), timeout=0.25)
                 streamer.push(pcm)
@@ -191,30 +295,43 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
                     await self.send_json({"type": "error", "error": f"stt_fail: {e}"})
                     continue
 
-                full = (full or "").strip()
-                if not full:
+                # IMPORTANT: keep RAW, do NOT strip
+                full_raw = (full or "")
+                if not full_raw:
                     if self.mem.stopping:
                         break
                     continue
 
-                old = self.mem._stt_last_emit or ""
-                if full == old:
-                    if self.mem.stopping:
-                        break
-                    continue
+                self.mem.stt_cumulative = full_raw
+                self.mem.last_stt_update_ts = time.time()
 
-                self.mem.stt_cumulative = full
+                # cursor safety
+                cur = int(getattr(self.mem, "_stt_committed_len", 0))
+                cur = max(0, min(cur, len(full_raw)))
+                cur = _avoid_cut_mid_word(full_raw, cur)
+                self.mem._stt_committed_len = cur
 
-                # delta append-only
-                if full.startswith(old):
-                    delta = full[len(old):]
-                else:
-                    delta = full
+                draft_raw = full_raw[cur:]
 
-                self.mem._stt_last_emit = full
+                # send live draft (FE should REPLACE)
+                await self.send_json({
+                    "type": "stt.delta",
+                    "text": draft_raw.lstrip(),  # UI nicer; cursor still uses RAW
+                })
 
-                if delta:
-                    await self.send_json({"type": "stt.delta", "delta": delta})
+                # immediate commit if punctuation exists inside draft
+                cut_idx, commit_raw, remain_raw = _split_commit_by_punct(draft_raw)
+                if cut_idx > 0:
+                    commit_norm = _norm_space(commit_raw).strip()
+                    if len(commit_norm) >= MIN_COMMIT_CHARS:
+                        self.mem._stt_committed_len = cur + cut_idx
+                        await self._commit_source_segment(commit_raw)
+
+                        # update live after commit
+                        await self.send_json({
+                            "type": "stt.delta",
+                            "text": remain_raw.lstrip(),
+                        })
 
             if self.mem.stopping:
                 logger.warning("[line1] stopping -> break")
@@ -222,50 +339,67 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
 
         logger.warning("[line1] exit")
 
-    # =========================
-    # Line 2: Translation realtime (poll STT) -> translation.delta
-    # IMPORTANT: dùng stream_translate_segment_async để không block event-loop
-    # =========================
-    async def _line2_translate_realtime(self):
-        POLL_SEC = 1.0
-        MIN_NEW_CHARS = 6
-        MAX_SEG_CHARS = 260
+    # =========================================================
+    # Pause commit loop: commit draft when idle >= PAUSE_SEC
+    # =========================================================
+    async def _pause_commit_loop(self):
+        logger.warning("[pause] start pause commit loop")
 
-        logger.warning("[line2] start translate realtime")
+        while not self.mem.stopped:
+            await asyncio.sleep(TICK)
+            if self.mem.stopping:
+                break
+
+            full_raw = (self.mem.stt_cumulative or "")  # NO strip
+            if not full_raw:
+                continue
+
+            cur = int(getattr(self.mem, "_stt_committed_len", 0))
+            cur = max(0, min(cur, len(full_raw)))
+            cur = _avoid_cut_mid_word(full_raw, cur)
+            self.mem._stt_committed_len = cur
+
+            draft_raw = full_raw[cur:]
+            if not draft_raw:
+                continue
+
+            idle = time.time() - float(getattr(self.mem, "last_stt_update_ts", time.time()))
+            if idle >= PAUSE_SEC:
+                draft_norm = _norm_space(draft_raw).strip()
+                if len(draft_norm) < MIN_COMMIT_CHARS:
+                    continue
+
+                # commit entire draft
+                self.mem._stt_committed_len = len(full_raw)
+                await self._commit_source_segment(draft_raw)
+
+                # clear live draft on FE
+                await self.send_json({"type": "stt.delta", "text": ""})
+
+        logger.warning("[pause] exit")
+
+    # =========================================================
+    # Line 2: Translation realtime ONLY for committed segments
+    # =========================================================
+    async def _line2_translate_commits(self):
+        logger.warning("[line2] start translate (commit_queue)")
 
         while not self.mem.stopped:
             if self.mem.stopping:
                 logger.warning("[line2] stopping -> break")
                 break
 
-            await asyncio.sleep(POLL_SEC)
-
-            src_full = (self.mem.stt_cumulative or "").strip()
-            last_src_len = int(self.mem._tr_last_src_len or 0)
-
-            logger.warning("[line2] tick src_len=%s last_src_len=%s", len(src_full), last_src_len)
-
-            if not src_full:
+            try:
+                seg = await asyncio.wait_for(self.commit_q.get(), timeout=0.25)
+            except asyncio.TimeoutError:
                 continue
 
-            # detect reset
-            if len(src_full) < last_src_len:
-                logger.warning("[line2] stt reset detected")
-                last_src_len = 0
-                self.mem._tr_last_src_len = 0
-                self.mem._tr_last_emit = ""
-
-            new_part = src_full[last_src_len:].strip()
-            if len(new_part) < MIN_NEW_CHARS:
+            seg = (seg or "").strip()
+            if not seg:
                 continue
 
-            if len(new_part) > MAX_SEG_CHARS:
-                new_part = new_part[-MAX_SEG_CHARS:]
-
-            logger.warning("[line2] CALL OLLAMA seg_len=%s seg_head=%r", len(new_part), new_part[:80])
-
-            out_cum = ""
-            prev_out = self.mem._tr_last_emit or ""
+            self.mem._translating = True
+            seg_cum = ""
 
             try:
                 async for chunk in stream_translate_segment_async(
@@ -273,38 +407,36 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
                     target_lang=self.mem.translate_target,
                     title_context_tail=self.mem.title_context_tail,
                     summary_context=self.mem.summary_context,
-                    segment=new_part,
+                    segment=seg,
                 ):
                     if self.mem.stopped or self.mem.stopping:
                         break
 
-                    out_cum += (chunk or "")
+                    chunk = chunk or ""
+                    if not chunk:
+                        continue
 
-                    # cumulative -> delta
-                    if out_cum.startswith(prev_out):
-                        delta = out_cum[len(prev_out):]
-                    else:
-                        delta = out_cum
-
-                    if delta:
-                        await self.send_json({"type": "translation.delta", "delta": delta})
-
-                    prev_out = out_cum
-                    self.mem._tr_last_emit = out_cum
+                    seg_cum += chunk
+                    await self.send_json({"type": "translation.delta", "delta": chunk})
 
             except Exception as e:
+                logger.exception("[line2] translate_fail")
                 await self.send_json({"type": "error", "error": f"translate_fail: {e}"})
+                self.mem._translating = False
                 continue
 
-            # mark consumed
-            self.mem._tr_last_src_len = len(src_full)
-            self.mem.tr_cumulative = (self.mem.tr_cumulative or "") + (out_cum or "")
+            translated = _norm_space(seg_cum).strip()
+            if translated:
+                self.mem.session_tgt_segments.append(translated)
+                await self.send_json({"type": "translation.commit", "text": translated})
+
+            self.mem._translating = False
 
         logger.warning("[line2] exit")
 
-    # =========================
+    # =========================================================
     # Line 3: Summary every 10s
-    # =========================
+    # =========================================================
     async def _line3_summary_10s(self):
         logger.warning("[line3] start summary worker")
 
@@ -315,18 +447,17 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
                 break
 
             try:
-                committed = (self.mem.committed_source or "").strip()
-                live = (self.mem.stt_cumulative or "").strip()
+                persisted = (self.mem.committed_source or "").strip()
+                session_committed = "\n".join(self.mem.session_src_segments).strip()
 
-                if committed and live:
-                    if live.startswith(committed):
-                        src2 = live
-                    else:
-                        src2 = committed + "\n" + live
-                else:
-                    src2 = committed or live
+                full_raw = (self.mem.stt_cumulative or "")
+                cur = int(getattr(self.mem, "_stt_committed_len", 0))
+                cur = max(0, min(cur, len(full_raw)))
+                cur = _avoid_cut_mid_word(full_raw, cur)
+                draft_raw = full_raw[cur:]
 
-                src2 = (src2 or "").strip()
+                parts = [p for p in [persisted, session_committed, _norm_space(draft_raw).strip()] if p]
+                src2 = "\n".join(parts).strip()
                 if not src2:
                     continue
 
@@ -344,9 +475,9 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
 
         logger.warning("[line3] exit")
 
-    # =========================
-    # STOP: final translate full, persist history, send final.result
-    # =========================
+    # =========================================================
+    # STOP
+    # =========================================================
     async def _on_stop(self):
         if self.mem.stopping or self.mem.stopped:
             return
@@ -354,22 +485,24 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         logger.warning("[stop] requested")
         self.mem.stopping = True
 
-        # grace time
+        # grace
         await asyncio.sleep(0.4)
 
+        # flush remaining draft
+        await self._flush_draft_commit()
+
+        # wait translations bounded
+        t0 = time.time()
+        while time.time() - t0 < 2.0:
+            if self.commit_q.empty() and not bool(getattr(self.mem, "_translating", False)):
+                break
+            await asyncio.sleep(0.1)
+
         try:
-            committed = (self.mem.committed_source or "").strip()
-            live = (self.mem.stt_cumulative or "").strip()
+            persisted_src = (self.mem.committed_source or "").strip()
+            session_src = "\n".join(self.mem.session_src_segments).strip()
 
-            if committed and live:
-                if live.startswith(committed):
-                    full_src = live
-                else:
-                    full_src = committed + "\n" + live
-            else:
-                full_src = committed or live
-
-            full_src = (full_src or "").strip()
+            full_src = "\n".join([p for p in [persisted_src, session_src] if p]).strip()
 
             final_tgt = await asyncio.to_thread(
                 final_translate_full,
@@ -406,6 +539,8 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         if self.mem.stopped:
             return
         self.mem.stopped = True
+
+        self._stop_event.set()
 
         for t in getattr(self, "_tasks", []):
             if not t.done():
