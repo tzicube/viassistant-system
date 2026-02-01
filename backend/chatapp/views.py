@@ -9,7 +9,8 @@ from django.conf import settings
 from config.settings import OLLAMA_URL, OLLAMA_MODEL
 from .memory import get_history_messages, format_app_memory_text, set_app_memory
 from django.views.decorators.http import require_POST
-
+OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
+OLLAMA_MODEL = "gemma2:27b" #  qwen2.5:14b    gemma2:27b
 # ✅ reuse HTTP connection (keep-alive)
 _http = requests.Session()
 

@@ -8,7 +8,8 @@ from django.conf import settings
 from config.settings import OLLAMA_URL, OLLAMA_MODEL
 from .models import Conversation, Message
 from .memory import get_history_messages, format_app_memory_text
-
+OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
+OLLAMA_MODEL = "gemma2:27b" #  qwen2.5:14b    gemma2:27b
 
 class ViChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
