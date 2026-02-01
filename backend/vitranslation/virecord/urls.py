@@ -13,4 +13,8 @@ urlpatterns = [
     # DETAIL
     path("api/record_detail", views.api_record_detail),
     path("api/record_detail/", views.api_record_detail),
+
+    # DELETE TOPIC
+    path("api/delete_topic", views.api_delete_topic),
+    path("api/delete_topic/", views.api_delete_topic),
 ]

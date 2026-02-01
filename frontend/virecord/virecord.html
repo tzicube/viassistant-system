@@ -13,38 +13,53 @@
 
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <span style="font-size:24px;">🎙️</span> ViRecord
-        <span style="font-size:10px; background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px;">PRO</span>
+        <button id="btnTapSite" class="tap-btn" title="Toggle Tap Site" aria-label="Toggle Tap Site">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="14" y2="12"></line><line x1="4" y1="18" x2="10" y2="18"></line></svg>
+        </button>
+
+        <div class="header-center">ViRecord</div>
+
+        <img src="assets/logo.png" alt="avatar" class="header-avatar" />
       </div>
 
       <div class="sidebar-content">
-        <div class="config-box">
-          <div class="label">Backend Connection</div>
-          <div class="input-group">
-            <input id="baseUrl" value="http://127.0.0.1:8000" placeholder="http://localhost:8000">
-            <button id="btnReload">Set</button>
-          </div>
-        </div>
+        <!-- Backend Connection removed: using default internal backend URL -->
 
         <div class="config-box">
           <div class="label">Translation Mode</div>
-          <div class="lang-row" id="srcBlock">
-            <span><span id="srcFlag">🇹🇼</span> <span id="srcLabel">Chinese</span></span>
-            <small>Source</small>
+          <!-- Source language dropdown -->
+          <div class="lang-dropdown" id="srcDropdown">
+            <button class="lang-select-btn" id="srcSelectBtn">
+              <span id="srcFlag">🇹🇼</span>
+              <span id="srcLabel">Chinese</span>
+            </button>
+            <div class="lang-options hidden" id="srcOptions">
+              <div class="lang-option" data-lang="zh">🇹🇼 Chinese</div>
+              <div class="lang-option" data-lang="vi">🇻🇳 Vietnamese</div>
+              <div class="lang-option" data-lang="en">🇺🇸 English</div>
+            </div>
           </div>
           <div class="swap-btn" id="btnSwap">⇅</div>
-          <div class="lang-row" id="tgtBlock">
-            <span><span id="tgtFlag">🇻🇳</span> <span id="tgtLabel">Vietnamese</span></span>
-            <small>Target</small>
+          <!-- Target language dropdown -->
+          <div class="lang-dropdown" id="tgtDropdown">
+            <button class="lang-select-btn" id="tgtSelectBtn">
+              <span id="tgtFlag">🇻🇳</span>
+              <span id="tgtLabel">Vietnamese</span>
+            </button>
+            <div class="lang-options hidden" id="tgtOptions">
+              <div class="lang-option" data-lang="zh">🇹🇼 Chinese</div>
+              <div class="lang-option" data-lang="vi">🇻🇳 Vietnamese</div>
+              <div class="lang-option" data-lang="en">🇺🇸 English</div>
+            </div>
           </div>
         </div>
 
         <div style="flex:1; display:flex; flex-direction:column;">
-          <div class="label">Session History</div>
+          <div class="label">TOPIC</div>
           <div class="topic-list" id="topicList">
             <div style="color:#9ca3af; font-size:13px; padding:10px;">Loading history...</div>
           </div>
-          <button class="new-topic-btn" id="btnNewTopic">+ New Topic</button>
+          <button class="new-topic-btn" id="btnNewTopic">New Topic</button>
         </div>
       </div>
     </aside>
@@ -59,12 +74,10 @@
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
           </div>
-          <h2 style="margin:0; font-size:18px;">Dashboard</h2>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:14px; color:var(--muted);">Hello,</span>
-          <b>Người đẹp chân ngắn</b>
-          <div style="width:36px; height:36px; background:#fcd34d; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 2px 4px rgba(0,0,0,0.1);">🐥</div>
+          <b>ViRecord</b>
+          <div class="logo"></div>
         </div>
       </header>
 
@@ -72,7 +85,7 @@
         <div class="translate-card card-source">
           <div class="card-header">
             <span style="font-size:20px;">🗣️</span>
-            <b id="srcTitle">Chinese</b>
+            <b id="srcTitle">None</b>
           </div>
           <div class="card-body"><p id="srcText">—</p></div>
         </div>
@@ -80,25 +93,43 @@
         <div class="translate-card card-target">
           <div class="card-header">
             <span style="font-size:20px;">文</span>
-            <b id="tgtTitle">Vietnamese</b>
+            <b id="tgtTitle">None</b>
           </div>
           <div class="card-body"><p id="tgtText">—</p></div>
         </div>
       </div>
 
       <footer class="footer-controls">
-        <div class="status-bar">
+        <div class="status-barright">
           <div class="badge" id="topicBadge">Topic: None</div>
-          <div class="badge" id="statusBadge">Idle</div>
         </div>
 
         <button class="record-btn" id="btnRecord" title="Start/Stop">
           <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V20h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
         </button>
+
+        <div class="status-barleft">
+          <div class="badge" id="statusBadge">Idle</div>
+        </div>
+      
+
       </footer>
     </main>
   </div>
 
+  <!-- Custom modal for prompts/confirms (replaces native alert/confirm/prompt) -->
+  <div id="modalRoot" class="custom-modal hidden" aria-hidden="true">
+    <div class="custom-modal-backdrop" id="modalBackdrop"></div>
+    <div class="custom-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage">
+      <div class="custom-modal-title" id="modalTitle">Confirm</div>
+      <div class="custom-modal-message" id="modalMessage">Message</div>
+      <input id="modalInput" class="custom-modal-input" type="text" />
+      <div class="custom-modal-actions">
+        <button id="modalCancel" class="modal-btn cancel">Cancel</button>
+        <button id="modalConfirm" class="modal-btn confirm">OK</button>
+      </div>
+    </div>
+  </div>
   <script src="virecord.js"></script>
 </body>
 </html>

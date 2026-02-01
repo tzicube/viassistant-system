@@ -1,9 +1,5 @@
-Chào mọi người, hôm nay chúng ta bắt đầu học lập trình C++. Hôm nay là buổi đầu tiên, chúng ta sẽ cùng nhau tìm hiểu về cách cài đặt phần mềm và thực hiện chương trình đầu tiên. 
+Chào mọi người, hôm nay chúng ta bắt đầu khóa học "Học lập trình C++ từ đầu". Đây là buổi học đầu tiên, chúng ta sẽ nói về việc cài đặt phần mềm và thực hiện chương trình đầu tiên. Khóa học của chúng tôi không đề cập đến lịch sử của ngôn ngữ lập trình C++ cũng như các kiến thức liên quan.
 
-Khóa học của chúng ta không tập trung vào lịch sử của ngôn ngữ C++ hay môi trường nào nó có thể được sử dụng. Thay vào đó, khóa học này tập trung vào việc giúp các bạn nhanh chóng nắm bắt được kiến thức cơ bản và thực hiện được một chương trình đơn giản để thấy kết quả ngay lập tức.
+Bởi vì những kiến thức này có thể tìm thấy ở nhiều nơi khác, điểm chính của khóa học này là giúp mọi người nhanh chóng bắt tay vào lập trình và nắm được cấu trúc cơ bản của lập trình. Hôm nay, chúng ta sẽ tập trung vào hai khía cạnh: thứ nhất là cài đặt phần mềm biên dịch tốt nhất, thứ hai là viết chương trình C++ đầu tiên tốt nhất.
 
-Hôm nay, chúng ta sẽ chủ yếu chia sẻ hai nội dung chính: 
-
-Thứ nhất là cài đặt phần mềm biên dịch tốt nhất. Thứ hai là viết chương trình đầu tiên.
-
-Về phần mềm biên dịch tốt nhất, chúng tôi khuyên bạn nên sử dụng Visual Studio 2019. Phần mềm này cũng được sử dụng trong các kỳ thi như  SSP và NOIIP.
+Chúng tôi khuyên nên sử dụng Visual Studio 2019, vì mức giá của nó khá ưu đãi.

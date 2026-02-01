@@ -20,6 +20,80 @@ window.addEventListener("unhandledrejection", (e) => {
 });
 
 /* ======================
+ * CUSTOM MODAL (async confirm/prompt)
+ * Elements are placed in HTML so the script can bind to them on load.
+ * ====================== */
+const _modal = {
+  root: $("modalRoot"),
+  backdrop: $("modalBackdrop"),
+  title: $("modalTitle"),
+  message: $("modalMessage"),
+  input: $("modalInput"),
+  btnConfirm: $("modalConfirm"),
+  btnCancel: $("modalCancel"),
+};
+
+function _showModal({ title = "Confirm", message = "", showInput = false, defaultValue = "" } = {}) {
+  return new Promise((resolve) => {
+    if (!_modal.root) {
+      // fallback to native
+      if (showInput) return resolve(prompt(message, defaultValue));
+      return resolve(confirm(message));
+    }
+
+    _modal.title.textContent = title;
+    _modal.message.textContent = message;
+    _modal.input.style.display = showInput ? "block" : "none";
+    _modal.input.value = defaultValue || "";
+
+    _modal.root.classList.remove("hidden");
+    _modal.root.setAttribute("aria-hidden", "false");
+
+    const cleanup = () => {
+      _modal.root.classList.add("hidden");
+      _modal.root.setAttribute("aria-hidden", "true");
+      _modal.btnConfirm.removeEventListener("click", onConfirm);
+      _modal.btnCancel.removeEventListener("click", onCancel);
+      _modal.backdrop.removeEventListener("click", onCancel);
+      _modal.input.removeEventListener("keydown", onKeyDown);
+    };
+
+    const onConfirm = () => {
+      const val = showInput ? _modal.input.value : true;
+      cleanup();
+      resolve(showInput ? (val === "" ? "" : val) : true);
+    };
+    const onCancel = () => {
+      cleanup();
+      resolve(showInput ? null : false);
+    };
+    const onKeyDown = (ev) => {
+      if (ev.key === "Enter") onConfirm();
+      if (ev.key === "Escape") onCancel();
+    };
+
+    _modal.btnConfirm.addEventListener("click", onConfirm);
+    _modal.btnCancel.addEventListener("click", onCancel);
+    _modal.backdrop.addEventListener("click", onCancel);
+    _modal.input.addEventListener("keydown", onKeyDown);
+
+    // focus
+    setTimeout(() => {
+      if (showInput) _modal.input.focus();
+      else _modal.btnConfirm.focus();
+    }, 10);
+  });
+}
+
+function showConfirm(message, title = "Confirm") {
+  return _showModal({ title, message, showInput: false });
+}
+
+function showPrompt(message, defaultValue = "", title = "Input") {
+  return _showModal({ title, message, showInput: true, defaultValue });
+}
+
+/* ======================
  * CONFIG & STATE
  * ====================== */
 const LANGS = {
@@ -82,34 +156,26 @@ function updateLiveBadges() {
 
   srcTitleEl.textContent = LANGS[sourceLang].label;
   tgtTitleEl.textContent = LANGS[targetLang].label;
-
-  const needLive = isRecording || pendingStop;
-
-  if (needLive) {
-    const badge = document.createElement("span");
-    badge.textContent = "LIVE";
-    badge.style.marginLeft = "10px";
-    badge.style.fontSize = "11px";
-    badge.style.padding = "2px 8px";
-    badge.style.borderRadius = "999px";
-    badge.style.background = "#111827";
-    badge.style.color = "#fff";
-    badge.style.verticalAlign = "middle";
-    srcTitleEl.appendChild(badge);
-
-    const badge2 = badge.cloneNode(true);
-    tgtTitleEl.appendChild(badge2);
-  }
 }
 
 function renderSource() {
   const text = (srcHistory ? srcHistory + "\n" : "") + (srcLive || "");
-  $("srcText").textContent = text.trim() ? text : "—";
+  const p = $("srcText");
+  p.textContent = text.trim() ? text : "—";
+  const container = p.parentElement;
+  try {
+    if (container.scrollHeight > container.clientHeight) container.scrollTop = container.scrollHeight;
+  } catch (e) {}
 }
 
 function renderTarget() {
   const text = (tgtHistory ? tgtHistory + "\n" : "") + (tgtLive || "");
-  $("tgtText").textContent = text.trim() ? text : "—";
+  const p = $("tgtText");
+  p.textContent = text.trim() ? text : "—";
+  const container = p.parentElement;
+  try {
+    if (container.scrollHeight > container.clientHeight) container.scrollTop = container.scrollHeight;
+  } catch (e) {}
 }
 
 function appendHistoryLine(cur, line) {
@@ -130,10 +196,22 @@ const toggleMenu = () => {
 $("btnMenu").addEventListener("click", toggleMenu);
 overlay.addEventListener("click", toggleMenu);
 
+// TapSite toggle button (sidebar header)
+const btnTap = $("btnTapSite");
+if (btnTap) {
+  btnTap.addEventListener("click", () => {
+    btnTap.classList.toggle("active");
+  });
+}
+
 /* ======================
  * API & WS URL
  * ====================== */
-const apiBase = () => ($("baseUrl").value || "").trim().replace(/\/+$/, "");
+const apiBase = () => {
+  const el = $("baseUrl");
+  const v = el ? (el.value || "") : "http://127.0.0.1:8000";
+  return v.toString().trim().replace(/\/+$/, "");
+};
 const wsUrl = () => {
   const base = apiBase();
   if (base.startsWith("https://")) return "wss://" + base.slice(8) + "/ws/virecord/";
@@ -161,9 +239,46 @@ function renderTopics() {
   topics.forEach((t) => {
     const el = document.createElement("div");
     el.className = `topic-item ${String(t.title_id) === String(activeTitleId) ? "active" : ""}`;
-    el.innerHTML =
-      `<span>${escapeHtml(t.title_name)}</span> ` +
-      `<span style="font-size:10px; opacity:0.5;">#${t.title_id}</span>`;
+    el.innerHTML = `<span>${escapeHtml(t.title_name)}</span>`;
+
+    // delete button
+    const del = document.createElement("button");
+    del.className = "topic-del";
+    del.title = "Delete topic";
+    del.textContent = "✕";
+    del.onclick = async (ev) => {
+      ev.stopPropagation();
+      const ok = await showConfirm(`Delete topic "${t.title_name}"? This cannot be undone.`, "Delete topic");
+      if (!ok) return;
+      try {
+        setStatus("Deleting...");
+        const r = await fetch(apiBase() + "/api/delete_topic", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title_id: t.title_id }),
+        });
+        const data = await r.json();
+        if (r.ok && data.ok) {
+          if (String(activeTitleId) === String(t.title_id)) {
+            activeTitleId = null;
+            activeTitleName = null;
+            srcHistory = "";
+            tgtHistory = "";
+            srcLive = "";
+            tgtLive = "";
+            renderSource();
+            renderTarget();
+          }
+          await loadHistory();
+        } else {
+          alert("Delete failed: " + (data.error || r.status));
+        }
+      } catch (e) {
+        alert("Delete error: " + (e?.message || e));
+      } finally {
+        setStatus("Idle");
+      }
+    };
 
     el.onclick = async () => {
       activeTitleId = t.title_id;
@@ -176,6 +291,8 @@ function renderTopics() {
 
       await loadDetail(activeTitleId);
     };
+
+    el.appendChild(del);
     list.appendChild(el);
   });
 }
@@ -229,11 +346,12 @@ async function loadDetail(id) {
   }
 }
 
-$("btnReload").onclick = loadHistory;
+const btnReloadEl = $("btnReload");
+if (btnReloadEl) btnReloadEl.onclick = loadHistory;
 
 $("btnNewTopic").onclick = async () => {
-  const name = prompt("New topic name:", "Meeting " + new Date().toLocaleTimeString());
-  if (!name) return;
+  const name = await showPrompt("New topic name:", "Meeting " + new Date().toLocaleTimeString(), "New topic");
+  if (name === null) return;
 
   try {
     const r = await fetch(endpoints.newTopic(), {
@@ -254,23 +372,57 @@ $("btnNewTopic").onclick = async () => {
 };
 
 /* ======================
- * LANG CONTROLS
+ * LANG CONTROLS (dropdown)
  * ====================== */
+function setupLangDropdown(dropdownId, selectBtnId, optionsId, isSource = true) {
+  const dropdown = $(dropdownId);
+  const selectBtn = $(selectBtnId);
+  const options = $(optionsId);
+  const optionItems = options ? options.querySelectorAll(".lang-option") : [];
+
+  if (!selectBtn || !options) return;
+
+  // toggle dropdown
+  selectBtn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    const isHidden = options.classList.contains("hidden");
+    // close all other dropdowns
+    document.querySelectorAll(".lang-options").forEach((o) => o.classList.add("hidden"));
+    // toggle current
+    if (isHidden) options.classList.remove("hidden");
+  });
+
+  // select language
+  optionItems.forEach((item) => {
+    item.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const lang = item.getAttribute("data-lang");
+      if (isSource) {
+        sourceLang = lang;
+      } else {
+        targetLang = lang;
+      }
+      updateLangUI();
+      options.classList.add("hidden");
+    });
+  });
+}
+
+// setup dropdowns
+setupLangDropdown("srcDropdown", "srcSelectBtn", "srcOptions", true);
+setupLangDropdown("tgtDropdown", "tgtSelectBtn", "tgtOptions", false);
+
+// swap languages
 $("btnSwap").addEventListener("click", () => {
   [sourceLang, targetLang] = [targetLang, sourceLang];
   updateLangUI();
 });
 
-$("srcBlock").addEventListener("click", () => {
-  const keys = Object.keys(LANGS);
-  sourceLang = keys[(keys.indexOf(sourceLang) + 1) % keys.length];
-  updateLangUI();
-});
-
-$("tgtBlock").addEventListener("click", () => {
-  const keys = Object.keys(LANGS);
-  targetLang = keys[(keys.indexOf(targetLang) + 1) % keys.length];
-  updateLangUI();
+// close dropdowns when clicking outside
+document.addEventListener("click", (ev) => {
+  if (!ev.target.closest(".lang-dropdown")) {
+    document.querySelectorAll(".lang-options").forEach((o) => o.classList.add("hidden"));
+  }
 });
 
 /* ======================

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 from datetime import datetime
 from django.conf import settings
@@ -123,3 +124,15 @@ def build_title_context_tail(prev_source: str, prev_target: str, max_lines: int 
         for i in range(len(s_tail) - n):
             pairs.append(f"SOURCE: {s_tail[n + i]}\nTARGET: ")
     return "\n---\n".join(pairs).strip()
+
+
+def delete_session(title_id: str) -> bool:
+    """Remove a saved session (folder) for given title_id. Returns True on success."""
+    folder = history_root() / title_id
+    if not folder.exists() or not folder.is_dir():
+        return False
+    try:
+        shutil.rmtree(folder)
+        return True
+    except Exception:
+        return False
