@@ -15,6 +15,7 @@ from vitranslation.ai_engine.prompts import VALID_LANGS
 from vitranslation.ai_engine.translator import (
     stream_translate_segment_async,
     final_translate_full,
+    refine_source_full,
 )
 
 from .memory import SessionMemory
@@ -178,7 +179,6 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         self.mem.title_context_tail = build_title_context_tail(prev_src, prev_tgt)
 
         self.mem.stt_cumulative = ""
-        self.mem.summary_context = ""
         self.mem.last_audio_ts = time.time()
 
         self.mem._stt_last_emit = ""
@@ -190,9 +190,7 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         self.mem.session_tgt_segments = []
         self.mem._translating = False
 
-        # =========================
-        # TASKS (LINE 3 REMOVED)
-        # =========================
+
         self._tasks = [
             asyncio.create_task(self._line1_stt(), name="line1_stt"),
             asyncio.create_task(self._pause_commit_loop(), name="pause_commit"),
@@ -352,8 +350,8 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
             async for chunk in stream_translate_segment_async(
                 source_lang=self.mem.translate_source,
                 target_lang=self.mem.translate_target,
+                title_name=self.mem.title_name,
                 title_context_tail=self.mem.title_context_tail,
-                summary_context=self.mem.summary_context,
                 segment=seg,
             ):
                 if self.mem.stopping or self.mem.stopped:
@@ -404,23 +402,34 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         session_src = "\n".join(self.mem.session_src_segments).strip()
         full_src = "\n".join([p for p in [persisted_src, session_src] if p]).strip()
 
+        # REFINE: Fix STT errors, correct grammar, fill gaps based on title context
+        logger.warning("[refine] start refining source")
+        refined_src = await asyncio.to_thread(
+            refine_source_full,
+            self.mem.translate_source,
+            self.mem.title_name,
+            full_src,
+        )
+        refined_src = (refined_src or "").strip() or full_src
+        logger.warning("[refine] done, len(before)=%d len(after)=%d", len(full_src), len(refined_src))
+
+        # TRANSLATE: Use refined source for final translation
         final_tgt = await asyncio.to_thread(
             final_translate_full,
             self.mem.translate_source,
             self.mem.translate_target,
+            self.mem.title_name,
             self.mem.title_context_tail,
-            self.mem.summary_context,
-            full_src,
+            refined_src,
         )
 
-        write_source(self.mem.title_id, full_src)
+        write_source(self.mem.title_id, refined_src)
         write_target(self.mem.title_id, final_tgt or "")
 
         await self.send_json({
             "type": "final.result",
-            "source": full_src,
+            "source": refined_src,
             "target": final_tgt or "",
-            "summary": "",
         })
 
         await self._shutdown()

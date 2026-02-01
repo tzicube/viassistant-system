@@ -6,14 +6,14 @@ import threading
 from typing import AsyncIterator
 
 from .ollama_client import generate, generate_stream
-from .prompts import translate_segment_prompt, final_translate_prompt
+from .prompts import translate_segment_prompt, final_translate_prompt, refine_source_prompt
 
 
 async def stream_translate_segment_async(
     source_lang: str,
     target_lang: str,
+    title_name: str,
     title_context_tail: str,
-    summary_context: str,
     segment: str,
 ) -> AsyncIterator[str]:
     """
@@ -21,7 +21,7 @@ async def stream_translate_segment_async(
     trả token/chunk về async iterator để không block event-loop.
     """
     prompt = translate_segment_prompt(
-        source_lang, target_lang, title_context_tail, summary_context, segment
+        source_lang, target_lang, title_name, title_context_tail, segment
     )
 
     q: asyncio.Queue[str | None] = asyncio.Queue()
@@ -49,13 +49,30 @@ async def stream_translate_segment_async(
 def final_translate_full(
     source_lang: str,
     target_lang: str,
+    title_name: str,
     title_context_tail: str,
-    summary_context: str,
     full_source: str,
 ) -> str:
     if not (full_source or "").strip():
         return ""
     prompt = final_translate_prompt(
-        source_lang, target_lang, title_context_tail, summary_context, full_source
+        source_lang, target_lang, title_name, title_context_tail, full_source
+    )
+    return generate(prompt)
+
+
+def refine_source_full(
+    source_lang: str,
+    title_name: str,
+    full_source: str,
+) -> str:
+    """
+    Refine STT output: fix errors, correct grammar, add punctuation,
+    fill logical gaps based on conversation title context.
+    """
+    if not (full_source or "").strip():
+        return ""
+    prompt = refine_source_prompt(
+        source_lang, title_name, full_source
     )
     return generate(prompt)

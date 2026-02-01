@@ -441,13 +441,7 @@ async function startRecording(isReconnect = false) {
       return;
     }
 
-    // -------------------------
-    // SUMMARY
-    // -------------------------
-    if (msg.type === "summary.update") {
-      console.log("🧠 summary:", msg.summary);
-      return;
-    }
+    // summary messages removed
 
     // -------------------------
     // FINAL RESULT
@@ -596,7 +590,7 @@ async function initAudio() {
     const b64 = btoa(bin);
 
     wsSend({ type: "audio.chunk", pcm16_b64: b64 });
-  }, 3000);
+  }, 2000);
 }
 
 /* ======================

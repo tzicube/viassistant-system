@@ -2,9 +2,17 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from datetime import datetime
 from django.conf import settings
+
+def _slug(text: str) -> str:
+    """Convert text to slug (lowercase, remove special chars, replace spaces with hyphens)."""
+    text = (text or "").strip().lower()
+    text = re.sub(r"[^\w\s-]", "", text)  # remove special chars
+    text = re.sub(r"[\s-]+", "-", text)  # replace spaces/hyphens with single hyphen
+    return text.strip("-") or "untitled"
 
 def history_root() -> Path:
     p = Path(settings.BASE_DIR) / "vitranslation" / "history"
@@ -33,8 +41,8 @@ def ensure_session(title_id: str, title_name: str | None = None) -> Path:
 
 def new_session(title_name: str | None = None):
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    title_id = ts
-    title_name = title_name or ts
+    title_name = (title_name or "").strip() or "Untitled"
+    title_id = _slug(title_name)  # use slugified name as folder id
     folder = ensure_session(title_id, title_name)
     meta = {"title_id": title_id, "title_name": title_name, "created_at": ts}
     (folder / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")

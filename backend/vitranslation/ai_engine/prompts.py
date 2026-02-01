@@ -17,37 +17,36 @@ def _lang_name(code: str) -> str:
 def translate_segment_prompt(
     source_lang: str,
     target_lang: str,
+    title_name: str,
     title_context_tail: str,
-    summary_context: str,
     segment: str,
 ) -> str:
     """
-    Realtime: dịch MỘT đoạn mới (segment), nhưng phải bám theo:
-      - title_context_tail: lịch sử source/target của topic để giữ thuật ngữ
-      - summary_context: tóm tắt định kỳ 10s để giữ ngữ cảnh
+        Realtime: dịch MỘT đoạn mới (segment), nhưng phải bám theo:
+            - title_name: tên của hội thoại/chủ đề
+            - title_context_tail: lịch sử source/target của topic để giữ thuật ngữ
     """
     src_name = _lang_name(source_lang)
     tgt_name = _lang_name(target_lang)
 
+    title = (title_name or "").strip()
     tail = (title_context_tail or "").strip()
-    summ = (summary_context or "").strip()
     seg = (segment or "").strip()
 
     return f"""You are a professional real-time translator.
 
+CONVERSATION TITLE: {title if title else "(untitled)"}
+
 RULES:
 - Translate from {src_name} to {tgt_name}.
 - Output ONLY the translated text. No explanation.
-- Keep technical terms consistent with the topic memory and summary.
+- Keep technical terms consistent with the conversation title and topic memory.
 - Preserve numbers, names, abbreviations, and units exactly.
 - If {tgt_name} is Vietnamese, use natural Vietnamese.
 - If {tgt_name} is Chinese, prefer Traditional Chinese if possible.
 
 TOPIC MEMORY (recent tail, bilingual):
 {tail if tail else "(none)"}
-
-RUNNING SUMMARY (updated periodically):
-{summ if summ else "(none)"}
 
 NEW SEGMENT (translate this):
 {seg}
@@ -57,8 +56,8 @@ NEW SEGMENT (translate this):
 def final_translate_prompt(
     source_lang: str,
     target_lang: str,
+    title_name: str,
     title_context_tail: str,
-    summary_context: str,
     full_source: str,
 ) -> str:
     """
@@ -67,45 +66,61 @@ def final_translate_prompt(
     src_name = _lang_name(source_lang)
     tgt_name = _lang_name(target_lang)
 
+    title = (title_name or "").strip()
     tail = (title_context_tail or "").strip()
-    summ = (summary_context or "").strip()
     src = (full_source or "").strip()
 
     return f"""You are a professional translator.
+
+CONVERSATION TITLE: {title if title else "(untitled)"}
 
 TASK:
 - Translate the FULL TEXT from {src_name} to {tgt_name}.
 - Output ONLY the final translated text (no commentary).
 - Make it coherent, fluent, and consistent.
-- Keep technical terminology consistent with the topic memory and the summary.
+- Keep technical terminology consistent with the conversation title and topic memory.
 - Preserve line breaks as much as possible.
 
 TOPIC MEMORY (recent tail, bilingual):
 {tail if tail else "(none)"}
-
-RUNNING SUMMARY:
-{summ if summ else "(none)"}
 
 FULL TEXT:
 {src}
 """
 
 
-def summary_prompt(source_lang: str, full_source: str) -> str:
+def refine_source_prompt(
+    source_lang: str,
+    title_name: str,
+    full_source: str,
+) -> str:
     """
-    Summary worker: tóm tắt để giữ ngữ cảnh (10s/lần).
+    Refine STT output before translation:
+    - Fix speech-to-text errors
+    - Correct grammar, punctuation
+    - Fill gaps based on conversation title context
+    - Make it coherent and logically complete
+    - Output ONLY the refined text (no commentary)
     """
     src_name = _lang_name(source_lang)
-    text = (full_source or "").strip()
+    title = (title_name or "").strip()
+    src = (full_source or "").strip()
 
-    return f"""You are a concise summarizer.
+    return f"""You are a professional editor specializing in correcting speech-to-text (STT) output.
 
-INPUT LANGUAGE: {src_name}
+CONVERSATION TITLE: {title if title else "(untitled)"}
+SOURCE LANGUAGE: {src_name}
 
-Summarize the text in 3-6 bullet points.
-Keep key entities, names, numbers, and domain terms.
-Be short and information-dense.
+TASK:
+- Review the raw STT text below
+- Fix speech recognition errors (homophones, missing words, mishearing)
+- Add proper punctuation and capitalization
+- Correct grammar while preserving original intent
+- Fill logical gaps or missing context based on the conversation title
+- Ensure coherence and logical flow
+- Output ONLY the refined text (no explanation or commentary)
+- Preserve line breaks structure
 
-TEXT:
-{text}
+RAW STT TEXT (may contain errors):
+{src}
 """
