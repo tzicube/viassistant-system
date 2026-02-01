@@ -27,8 +27,8 @@ class RealtimeWhisperStreamer:
         self.fmt = fmt or AudioFormat()
         self.buf = bytearray()
         self.last_ts = 0.0
-        self.min_interval = 0.8
-        self.max_sec = 15.0
+        self.min_interval = 0.5  # seconds
+        self.max_sec = 1800.0
 
     def push(self, pcm16: bytes):
         self.buf.extend(pcm16)

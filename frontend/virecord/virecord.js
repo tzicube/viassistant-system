@@ -596,7 +596,7 @@ async function initAudio() {
     const b64 = btoa(bin);
 
     wsSend({ type: "audio.chunk", pcm16_b64: b64 });
-  }, 500);
+  }, 3000);
 }
 
 /* ======================

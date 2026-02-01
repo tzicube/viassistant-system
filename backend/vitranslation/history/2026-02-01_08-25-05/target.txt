@@ -1,0 +1,3 @@
+Chào mọi người, hôm nay chúng ta bắt đầu khóa học "Ngủ và lập trình". Ngày hôm nay là ngày đầu tiên, chúng ta sẽ cùng nhau tìm hiểu về lịch sử cài đặt chương trình. 
+
+Ngày hôm nay, chúng ta sẽ đi qua từng bước cài đặt chương trình đầu tiên.
