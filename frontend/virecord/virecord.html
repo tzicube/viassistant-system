@@ -87,7 +87,13 @@
             <span style="font-size:20px;">🗣️</span>
             <b id="srcTitle">None</b>
           </div>
-          <div class="card-body"><p id="srcText">—</p></div>
+          <div class="card-body">
+            <p id="srcText">—</p>
+            <div id="srcWait" class="wait-overlay hidden" aria-live="polite">
+              <div class="wait-spinner"></div>
+              <div class="wait-text">Waiting for translation...</div>
+            </div>
+          </div>
         </div>
 
         <div class="translate-card card-target">
@@ -95,7 +101,13 @@
             <span style="font-size:20px;">文</span>
             <b id="tgtTitle">None</b>
           </div>
-          <div class="card-body"><p id="tgtText">—</p></div>
+          <div class="card-body">
+            <p id="tgtText">—</p>
+            <div id="tgtWait" class="wait-overlay hidden" aria-live="polite">
+              <div class="wait-spinner"></div>
+              <div class="wait-text">Waiting for translation...</div>
+            </div>
+          </div>
         </div>
       </div>
 

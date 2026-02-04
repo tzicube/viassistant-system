@@ -1,0 +1,9 @@
+Hello everyone, today we begin our course on learning C++ programming. This is the first lecture, where we'll cover software installation and creating your first program. Our course won't delve into the history of this language or its applications in various environments. Thank you!
+
+As you can see from many sources, this course focuses on quickly getting you started with C++, allowing you to enter the world of experimentation and experience its rhythm.
+
+Today's lecture will cover two main points: first, installing the best-suited development software; second, writing your first C++ program.
+
+For professional coding software, we recommend using Developer Studio 5.1. This version is also recommended by CSP and LOIP, as well as for exams at this level. You can search for this software online directly by typing "Dev.comStudio 5.1," or you can email me, and I'll send it to you via email.
+
+Once you receive the software, if it's version 5.1, its size should be around 48 megabytes. It shouldn't be too small; it definitely should be around 48 megabytes.

@@ -22,9 +22,9 @@ def translate_segment_prompt(
     segment: str,
 ) -> str:
     """
-        Realtime: dịch MỘT đoạn mới (segment), nhưng phải bám theo:
-            - title_name: tên của hội thoại/chủ đề
-            - title_context_tail: lịch sử source/target của topic để giữ thuật ngữ
+        Realtime: Translate ONE new segment, but adhere to the following:
+        title_name: the name of the conversation/topic
+        title_context_tail: the source/target history of the topic to preserve terminology
     """
     src_name = _lang_name(source_lang)
     tgt_name = _lang_name(target_lang)

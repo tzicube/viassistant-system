@@ -128,8 +128,37 @@ body {
   font-size: 18px;
   line-height: 1.6;
   background: #fff;
+  position: relative;
 }
 .card-body p { margin: 0; white-space: pre-wrap; }
+
+.wait-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(2px);
+  color: var(--muted);
+  font-size: 14px;
+}
+.wait-overlay.hidden { display: none; }
+.wait-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #e5e7eb;
+  border-top-color: #ef4444;
+  animation: spin 0.9s linear infinite;
+}
+.wait-text { font-weight: 600; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .card-source .card-header { background: #eff6ff; color: #1e40af; }
 .card-target .card-header { background: #fff1f2; color: #be123c; }

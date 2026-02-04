@@ -41,7 +41,9 @@ function _showModal({ title = "Confirm", message = "", showInput = false, defaul
       return resolve(confirm(message));
     }
 
-    _modal.title.textContent = title;
+    const hasTitle = String(title || "").trim().length > 0;
+    _modal.title.textContent = hasTitle ? title : "";
+    _modal.title.style.display = hasTitle ? "" : "none";
     _modal.message.textContent = message;
     _modal.input.style.display = showInput ? "block" : "none";
     _modal.input.value = defaultValue || "";
@@ -156,6 +158,20 @@ function updateLiveBadges() {
 
   srcTitleEl.textContent = LANGS[sourceLang].label;
   tgtTitleEl.textContent = LANGS[targetLang].label;
+}
+
+function setWaitUI(show, text) {
+  const ids = ["srcWait", "tgtWait"];
+  ids.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    if (text) {
+      const t = el.querySelector(".wait-text");
+      if (t) t.textContent = text;
+    }
+    if (show) el.classList.remove("hidden");
+    else el.classList.add("hidden");
+  });
 }
 
 function renderSource() {
@@ -350,7 +366,7 @@ const btnReloadEl = $("btnReload");
 if (btnReloadEl) btnReloadEl.onclick = loadHistory;
 
 $("btnNewTopic").onclick = async () => {
-  const name = await showPrompt("New topic name:", "Meeting " + new Date().toLocaleTimeString(), "New topic");
+  const name = await showPrompt("New topic name:", "", "");
   if (name === null) return;
 
   try {
@@ -468,6 +484,7 @@ function finalizeStopCloseWs() {
   closeWs();
 
   setStatus("Idle");
+  setWaitUI(false);
 }
 
 function scheduleReconnect() {
@@ -496,7 +513,7 @@ async function startRecording(isReconnect = false) {
   }
 
   if (!activeTitleId) {
-    alert("Chưa có topic. Bấm New Topic hoặc chọn topic trong History.");
+    alert("No active topic. Please create or select a topic first.");
     return;
   }
 
@@ -510,6 +527,7 @@ async function startRecording(isReconnect = false) {
     tgtLive = "";
     renderSource();
     renderTarget();
+    setWaitUI(false);
   }
 
   ws = new WebSocket(wsUrl());
@@ -611,6 +629,7 @@ async function startRecording(isReconnect = false) {
 
       renderSource();
       renderTarget();
+      setWaitUI(false);
 
       if (pendingStop) finalizeStopCloseWs();
       else setStatus("Idle");
@@ -625,6 +644,7 @@ async function startRecording(isReconnect = false) {
       setStatus("Err: " + err);
       tgtLive = "[SERVER ERROR] " + err;
       renderTarget();
+      setWaitUI(false);
 
       if (pendingStop) finalizeStopCloseWs();
       return;
@@ -669,6 +689,7 @@ function stopRecording() {
 
   $("btnRecord").classList.remove("recording");
   setStatus("Committing...");
+  setWaitUI(true, "Waiting for translation...");
 
   // stop mic but keep WS open for final.result
   cleanupAudio();

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ViAssistant - HTTP Test</title>
+    <link rel="stylesheet" href="viassistant.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="hero">
+        <h1>ViAssistant HTTP Test</h1>
+        <p>Upload WAV (16kHz, PCM16, mono) để test luồng STT → AI → TTS.</p>
+      </header>
+
+      <section class="card">
+        <div class="controls">
+          <button id="recordBtn">Start Recording</button>
+          <button id="stopBtn" disabled>Stop</button>
+          <button id="sendBtn" disabled>Send</button>
+        </div>
+
+        <label class="field">
+          <span>Language</span>
+          <input id="lang" type="text" value="en" disabled />
+        </label>
+
+        <div class="result">
+          <h3>Recorded Audio</h3>
+          <audio id="recordedAudio" controls></audio>
+        </div>
+
+        <div id="status" class="status"></div>
+      </section>
+
+      <section class="card">
+        <h2>Results</h2>
+        <div class="result">
+          <h3>STT Text</h3>
+          <pre id="sttText"></pre>
+        </div>
+        <div class="result">
+          <h3>AI Text</h3>
+          <pre id="aiText"></pre>
+        </div>
+        <div class="result">
+          <h3>TTS Audio</h3>
+          <audio id="ttsAudio" controls></audio>
+        </div>
+      </section>
+    </main>
+
+    <script src="viassistant.js"></script>
+  </body>
+</html>
