@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import asyncio
+import logging
 import os
-import tempfile
-import threading
-
-import pyttsx3
+import subprocess
 
 from stt_engine.config import WhisperConfig
 from stt_engine.whisper_gpu import transcribe_wav
+
+logger = logging.getLogger("viassistant.tts")
 
 
 @dataclass
@@ -24,36 +25,69 @@ class STTConfig:
 
 @dataclass
 class TTSConfig:
-    rate: int = 120
-    prefer_female: bool = True
+    edge_voice: str = (os.getenv("VI_EDGE_TTS_VOICE") or "en-US-JennyNeural").strip()
+    edge_rate: str = (os.getenv("VI_EDGE_TTS_RATE") or "+0%").strip()
+    edge_pitch: str = (os.getenv("VI_EDGE_TTS_PITCH") or "+0Hz").strip()
+    edge_volume: str = (os.getenv("VI_EDGE_TTS_VOLUME") or "+0%").strip()
+
+async def _edge_tts_to_mp3_bytes(text: str, cfg: TTSConfig) -> bytes:
+    # Lazy import so server can still start even if edge_tts is missing.
+    import edge_tts  # type: ignore
+
+    communicate = edge_tts.Communicate(
+        text=text,
+        voice=cfg.edge_voice,
+        rate=cfg.edge_rate,
+        volume=cfg.edge_volume,
+        pitch=cfg.edge_pitch,
+    )
+
+    out = bytearray()
+    async for chunk in communicate.stream():
+        if chunk.get("type") == "audio":
+            out.extend(chunk["data"])
+    return bytes(out)
 
 
-_voice_id = None
-_voice_lock = threading.Lock()
+def _ffmpeg_mp3_to_wav_bytes(mp3_bytes: bytes) -> bytes:
+    if not mp3_bytes:
+        return b""
+
+    cmd = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "mp3",
+        "-i",
+        "pipe:0",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        "-f",
+        "wav",
+        "pipe:1",
+    ]
+    p = subprocess.run(
+        cmd,
+        input=mp3_bytes,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if p.returncode != 0:
+        err = (p.stderr or b"").decode("utf-8", errors="ignore").strip()
+        raise RuntimeError(f"ffmpeg convert failed rc={p.returncode}: {err}")
+    return p.stdout
 
 
-def _get_preferred_voice_id(prefer_female: bool) -> str | None:
-    global _voice_id
-    if not prefer_female:
-        return None
-    if _voice_id is None:
-        with _voice_lock:
-            if _voice_id is None:
-                eng = pyttsx3.init()
-                try:
-                    for v in eng.getProperty("voices") or []:
-                        vid = (getattr(v, "id", "") or "").lower()
-                        name = (getattr(v, "name", "") or "").lower()
-                        gender = (getattr(v, "gender", "") or "").lower()
-                        if "zira" in vid or "zira" in name or "female" in gender:
-                            _voice_id = v.id
-                            break
-                finally:
-                    try:
-                        eng.stop()
-                    except Exception:
-                        pass
-    return _voice_id
+def _tts_text_to_wav_bytes_edge(text: str, cfg: TTSConfig) -> bytes:
+    mp3_bytes = asyncio.run(_edge_tts_to_mp3_bytes(text, cfg))
+    return _ffmpeg_mp3_to_wav_bytes(mp3_bytes)
 
 
 def stt_wav_to_text(wav_path: str, cfg: STTConfig) -> str:
@@ -74,27 +108,11 @@ def tts_text_to_wav_bytes(text: str, cfg: TTSConfig | None = None) -> bytes:
     if not text:
         return b""
 
-    fd, path = tempfile.mkstemp(suffix=".wav")
-    os.close(fd)
     try:
-        engine = pyttsx3.init()
-        engine.setProperty("rate", cfg.rate)
-        vid = _get_preferred_voice_id(cfg.prefer_female)
-        if vid:
-            engine.setProperty("voice", vid)
-        engine.save_to_file(text, path)
-        engine.runAndWait()
-        try:
-            engine.stop()
-        except Exception:
-            pass
-        with open(path, "rb") as f:
-            return f.read()
-    finally:
-        try:
-            os.remove(path)
-        except Exception:
-            pass
+        return _tts_text_to_wav_bytes_edge(text, cfg)
+    except Exception as e:
+        logger.exception("[tts] edge-tts failed: %s", e)
+        raise
 
 
 def stt_tts_pipeline(wav_path: str, stt_cfg: STTConfig, tts_cfg: TTSConfig | None = None):
