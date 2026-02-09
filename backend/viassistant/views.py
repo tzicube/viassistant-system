@@ -1,72 +1,28 @@
 from __future__ import annotations
 
 import base64
-import json
 import os
 import tempfile
 import wave
-import re
 import time
 import logging
 
-import requests
-from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from .assistant_logic import (
+    _call_ai,
+    _call_esp_relay,
+    _call_esp_sensor,
+    _detect_device_command,
+    _detect_sensor_query,
+    _format_device_reply,
+    _format_sensor_reply,
+)
 from .voice_pipeline import STTConfig, stt_wav_to_text, tts_text_to_wav_bytes
 
-_HTTP = requests.Session()
 logger = logging.getLogger("viassistant")
-_ESP_BASE_URL = "http://192.168.1.111"
-
-_ROOM_ALIASES = {
-    "living": {"living", "living room", "livingroom", "lounge"},
-    "kitchen": {"kitchen", "cook room", "cookroom"},
-    "bed": {"bed", "bedroom", "bed room", "sleep room", "sleeproom"},
-}
-
-_ROOM_LABELS_EN = {
-    "living": "living room",
-    "kitchen": "kitchen",
-    "bed": "bedroom",
-}
-
-
-def _detect_device_command(text: str) -> dict | None:
-    t = " ".join((text or "").lower().split())
-    if not t:
-        return None
-
-    state = None
-    if re.search(r"\b(turn on|switch on|enable|open|power on)\b", t):
-        state = "on"
-    if re.search(r"\b(turn off|switch off|disable|close|power off)\b", t):
-        state = "off"
-    if state is None:
-        return None
-
-    room = None
-    for key, aliases in _ROOM_ALIASES.items():
-        for a in aliases:
-            if a in t:
-                room = key
-                break
-        if room:
-            break
-
-    if not room:
-        return None
-
-    return {"room": room, "state": state}
-
-
-def _call_esp_relay(room: str, state: str) -> dict:
-    url = f"{_ESP_BASE_URL.rstrip('/')}/relay"
-    r = _HTTP.get(url, params={"room": room, "state": state}, timeout=(2, 5))
-    r.raise_for_status()
-    return {"ok": True, "text": (r.text or "").strip()}
 
 
 def _read_wav_info(path: str) -> dict:
@@ -78,36 +34,6 @@ def _read_wav_info(path: str) -> dict:
             "frames": wf.getnframes(),
             "duration_sec": wf.getnframes() / float(wf.getframerate() or 1),
         }
-
-
-def _call_ai(user_text: str) -> str:
-    system_prompt = (
-        "You are Vi Assistant. Reply with plain text only. "
-        "Do not use emojis, icons, or markdown. "
-        "Keep responses concise and natural."
-        "Develop at MingChuan University"
-    )
-    ollama_url = getattr(settings, "OLLAMA_URL", "http://127.0.0.1:11434")
-    ollama_model = getattr(settings, "OLLAMA_MODEL", "gemma2:9b")
-
-    url = f"{ollama_url.rstrip('/')}/api/chat"
-    messages = [
-        {"role": "assistant", "content": system_prompt},
-        {"role": "user", "content": user_text},
-    ]
-
-    r = _HTTP.post(
-        url,
-        json={
-            "model": ollama_model,
-            "messages": messages,
-            "stream": False,
-        },
-        timeout=(3, 120),
-    )
-    r.raise_for_status()
-    data = r.json()
-    return (data.get("message", {}) or {}).get("content", "").strip() or "No response."
 
 
 @csrf_exempt
@@ -147,21 +73,35 @@ def voice(request):
             )
 
         device_action = _detect_device_command(stt_text)
+        sensor_query = _detect_sensor_query(stt_text)
+        device_target = None
         device_result = None
+        sensor_result = None
         if device_action:
+            device_target = device_action.get("rooms") or device_action.get("room")
             try:
-                device_result = _call_esp_relay(device_action["room"], device_action["state"])
+                device_result = _call_esp_relay(device_target, device_action["state"])
             except Exception as e:
                 device_result = {"ok": False, "error": str(e)}
         logger.warning("[voice] device done (%.2fs)", time.time() - t0)
 
+        reply_source = "ai"
         if device_action:
-            temp = room_label if room_label != "kitchen" else None
-            room_label = _ROOM_LABELS_EN.get(device_action["room"], device_action["room"])
-            if device_action["state"] == "on":
-                ai_text = f"I have turned on the light in {room_label}" + temp
-            else:
-                ai_text = f"I have turned off the light in {room_label}" + temp
+            reply_source = "device"
+            ai_text = _format_device_reply(device_target, device_action["state"])
+        elif sensor_query:
+            reply_source = "sensor"
+            try:
+                sensor_result = _call_esp_sensor()
+            except Exception as e:
+                logger.exception("[voice] sensor error: %s", e)
+                sensor_result = {"ok": False, "error": str(e)}
+            ai_text = _format_sensor_reply(
+                sensor_result,
+                sensor_query["temperature"],
+                sensor_query["humidity"],
+            )
+            logger.warning("[voice] sensor done (%.2fs)", time.time() - t0)
         else:
             try:
                 ai_text = _call_ai(stt_text)
@@ -175,10 +115,12 @@ def voice(request):
                         "stt_text": stt_text,
                         "device_action": device_action,
                         "device_result": device_result,
+                        "sensor_query": sensor_query,
+                        "sensor_result": sensor_result,
                     },
                     status=200,
                 )
-            logger.warning("[voice] ai done (%.2fs)", time.time() - t0)
+        logger.warning("[voice] reply done source=%s (%.2fs)", reply_source, time.time() - t0)
 
         tts_bytes = tts_text_to_wav_bytes(ai_text)
         logger.warning("[voice] tts done (%.2fs)", time.time() - t0)
@@ -195,6 +137,8 @@ def voice(request):
                 "wav_info": wav_info,
                 "device_action": device_action,
                 "device_result": device_result,
+                "sensor_query": sensor_query,
+                "sensor_result": sensor_result,
             },
             status=200,
         )

@@ -3,9 +3,9 @@
 │   VIN   → 5V                                                                 │
 │   GND   → GND                                                                │
 │                                                                              │
-│   BCLK  → GPIO26   (I2S BCLK - DÙNG CHUNG với INMP441 SCK)                   │
-│   LRC   → GPIO25   (I2S LRCLK/WS - DÙNG CHUNG với INMP441 WS)                │
-│   DIN   → GPIO27   (I2S DATA OUT: ESP32S → AMP)                              │
+│   BCLK  → GPIO18   (I2S BCLK - DÙNG CHUNG với INMP441 SCK)                   │
+│   LRC   → GPIO19   (I2S LRCLK/WS - DÙNG CHUNG với INMP441 WS)                │
+│   DIN   → GPIO23   (I2S DATA OUT: ESP32S → AMP)                              │
 │                                                                              │
 │   SD    → 3V3      (ENABLE: kéo lên để AMP chạy)                             │
 │   GAIN  → GND      (~9 dB, ổn cho loa 4Ω–2W)                                 │

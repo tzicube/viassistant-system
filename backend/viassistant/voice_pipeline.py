@@ -14,7 +14,7 @@ from stt_engine.whisper_gpu import transcribe_wav
 
 @dataclass
 class STTConfig:
-    model_size: str = "medium"    
+    model_size: str = "medium"
     device: str = "cuda"
     compute_type: str = "float16"
     language: str | None = "en"
