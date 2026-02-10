@@ -1,11 +1,4 @@
-// ViAssistant main ESP (MIC + OLED face + button)
-// - Press button: start recording (send start)
-// - Press again: stop (send stop)
-// - While idle/recording/processing: show FACE animation on OLED
-// - When AI text arrives: show wrapped text temporarily, then return to FACE
-// - While waiting server reply after stop: show THINKING animation (no text)
-// - If audio_b64 arrives: decode WAV + play via I2S AMP
-
+//OK
 #include <WiFi.h>
 #include <WebSocketsClient.h>
 #include "driver/i2s.h"
@@ -24,7 +17,7 @@ const char* WIFI_PASS = "Duy31122005@";
 // =========================
 // SERVER (WebSocket)
 // =========================
-const char* WS_HOST = "192.168.1.103";
+const char* WS_HOST = "192.168.1.113";
 const int WS_PORT = 8000;
 const char* WS_PATH = "/ws/viassistant/";
 
@@ -42,7 +35,7 @@ const int I2S_SPK_WS   = 19;
 const int I2S_SPK_DOUT = 23;
 
 // BUTTON
-const int BTN_PIN = 33;
+const int BTN_PIN = 14;
 
 // OLED (SSD1306)
 const int OLED_SDA = 21;
@@ -108,7 +101,7 @@ int gazeDir = 0;
 unsigned long moveTime = 0;
 
 // Blink
-int blinkState = 0;               // 0 open, 1 closed
+int blinkState = 0;                // 0 open, 1 closed
 int blinkDelayMs = 4000;
 unsigned long lastBlinkTime = 0;
 

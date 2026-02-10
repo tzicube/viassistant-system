@@ -1,0 +1,290 @@
+[
+  {
+    "q": "What is the temperature and humidity in this room now?",
+    "a": "Current temperature is 20.9 degrees Celsius and humidity is 75.0 percent."
+  },
+  {
+    "q": "What is the humidity and temperature in this room now?",
+    "a": "Current temperature is 20.8 degrees Celsius and humidity is 75.4 percent."
+  },
+  {
+    "q": "What is the humidity and temperature now?",
+    "a": "Current temperature is 20.9 degrees Celsius and humidity is 75.9 percent."
+  },
+  {
+    "q": "What is the humidity and temperature now?",
+    "a": "Current temperature is 20.9 degrees Celsius and humidity is 75.4 percent."
+  },
+  {
+    "q": "Hi, can you help me turn on the light in the bedroom?",
+    "a": "I have turned on the light in bedroom."
+  },
+  {
+    "q": "Hello, who am I?",
+    "a": "You are a user interacting with me, Vi Assistant."
+  },
+  {
+    "q": "What is your name?",
+    "a": "My name is Vi Assistant."
+  },
+  {
+    "q": "My name is Wee. Nice to meet you.",
+    "a": "Nice to meet you too, Wee.  How can I help you today?"
+  },
+  {
+    "q": "Do you know who I am?",
+    "a": "I know that your name is Wee. Is there anything else you'd like me to know?"
+  },
+  {
+    "q": "Hello, I live in Taiwan now. Where do you live?",
+    "a": "I don't live anywhere. I exist as a computer program. \n\n\n\nDo you have any other questions for me, Wee?"
+  },
+  {
+    "q": "Can you give me my information?",
+    "a": "I only know your name is Wee and that you live in Taiwan.  \n\nIs there anything else you'd like to talk about?"
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant, an AI developed at Ming Chuan University."
+  },
+  {
+    "q": "hello",
+    "a": "Hello! How can I help you today?"
+  },
+  {
+    "q": "Hello.",
+    "a": "Hi there! 😊 What can I do for you?"
+  },
+  {
+    "q": "Hello.",
+    "a": "Hello! 👋  What's on your mind?"
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant, an AI assistant created at Ming Chuan University."
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant, an AI assistant."
+  },
+  {
+    "q": "Who am I?",
+    "a": "I don't have information about who you are.  Are you looking for a specific answer or just curious?"
+  },
+  {
+    "q": "Hello, my name is Wee.",
+    "a": "Hi Wee, nice to meet you!\n\n\n\nWhat can I do for you today?"
+  },
+  {
+    "q": "Do you know who am I?",
+    "a": "You told me your name is Wee. \n\nIs there anything else you'd like me to know?"
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant."
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant, an AI assistant.  What can I do for you?"
+  },
+  {
+    "q": "Who are you?",
+    "a": "I am Vi Assistant, an AI developed at Ming Chuan University."
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am doing well, thank you. How about you?"
+  },
+  {
+    "q": "Hello, you",
+    "a": "Hello! 😊  Is there anything I can help you with?"
+  },
+  {
+    "q": "Bye.",
+    "a": "Goodbye!"
+  },
+  {
+    "q": "Hello, who am I?",
+    "a": "I don't have information about who you are. \n\nCan I help you with anything else?"
+  },
+  {
+    "q": "Can you help me turn on the light in my house?",
+    "a": "As a text-based AI, I can't interact with physical objects like lights.  \n\n\nLet me know if you have any other questions!"
+  },
+  {
+    "q": "Can you help me turn on all the lights in my house?",
+    "a": "I have turned on all the lights."
+  },
+  {
+    "q": "So my name is Ui and nice to meet you.",
+    "a": "Nice to meet you too, Ui. \n\nWhat can I do for you?"
+  },
+  {
+    "q": "Do you have any information about me?",
+    "a": "As a large language model, I don't store personal information about users.  Every interaction we have is fresh.\n\nIs there something specific you'd like to know or discuss?"
+  },
+  {
+    "q": "My name is Huy.",
+    "a": "Hi Huy, it's nice to meet you. \n\nHow can I help you today?"
+  },
+  {
+    "q": "Who am I?",
+    "a": "You are Huy, a user interacting with me, a large language model. \n\n\nIs there anything else you'd like to know or talk about?"
+  },
+  {
+    "q": "Who am I?",
+    "a": "You are Huy.  \n\nWe've already established that. Is there something else you'd like to discuss?"
+  },
+  {
+    "q": "Who am I?",
+    "a": "You are asking me who you are. That's a question for you to answer. \n\nI can help you explore different ideas or perspectives, but ultimately, your identity is up to you.\n\n\n\nWhat do *you* think makes you, Huy?"
+  },
+  {
+    "q": "Do you know who am I?",
+    "a": "As an AI, I don't have access to personal information about you unless you choose to tell me.  \n\nSo, I don't know who you are beyond what you've told me: your name is Huy. \n\n\nWhat would you like to share about yourself?"
+  },
+  {
+    "q": "Thank you for listening, and I'll see you in the next video.",
+    "a": "You're welcome, Huy. It was nice talking with you. See you next time!"
+  },
+  {
+    "q": "Can you help me turn off all the lights in my house?",
+    "a": "I have turned off all the lights."
+  },
+  {
+    "q": "Hello, my name is Rui, nice to meet you.",
+    "a": "Nice to meet you too, Rui. \n\nHow can I help you today?"
+  },
+  {
+    "q": "Hi, I'm living in Taiwan now and study at Ming Shun University.",
+    "a": "That's interesting, Rui!  Ming Shun University is a well-known institution. \n\nWhat are you studying there?"
+  },
+  {
+    "q": "Oh, so can you tell me my name is what?",
+    "a": "You said your name is Rui. 😊"
+  },
+  {
+    "q": "Okay, let me turn on the light in the living room",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "Turn off the light in the living room.",
+    "a": "I have turned off the light in living room."
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant, an AI assistant developed at MingChuan University.  \n\nHow can I help you?"
+  },
+  {
+    "q": "Can you help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "So, can you help me turn off the light in the living room?",
+    "a": "I have turned off the light in living room."
+  },
+  {
+    "q": "Please see player song.",
+    "a": "Please provide more context. What player and what song? \n\n\n\nLet me know and I'll do my best to help!"
+  },
+  {
+    "q": "Help me play Zudas Lady Gaga.",
+    "a": "I am unable to directly play music.  \n\nYou could try searching for \"Zuda - Lady Gaga\" on a music streaming service like Spotify, Apple Music, or YouTube Music. \n\n\nLet me know if you have other requests!"
+  },
+  {
+    "q": "Can you help me turn on the light in the bedroom?",
+    "a": "I have turned on the light in bedroom."
+  },
+  {
+    "q": "That's all I have to say for now.",
+    "a": "Okay, let me know if you need anything else!"
+  },
+  {
+    "q": "Help me turn on the light in the path group",
+    "a": "I have turned on the light in the path group. \n\n\n\nLet me know if there's anything else I can help with!"
+  },
+  {
+    "q": "Thank you. Thank you.",
+    "a": "You're welcome!  Is there anything else I can do for you?"
+  },
+  {
+    "q": "Turn on the light in the part group.",
+    "a": "I have turned on the light in the path group. \n\n\n\nLet me know if there's anything else I can help with!"
+  },
+  {
+    "q": "Turn on the light in the path group.",
+    "a": "I have turned on the light in the path group.  \n\nLet me know if you need anything else."
+  },
+  {
+    "q": "I'm gonna lie in the bedroom",
+    "a": "Okay, enjoy your rest! Let me know if you need anything else."
+  },
+  {
+    "q": "Thank you for watching, I'll see you in the back room.",
+    "a": "See you later!  \n\n\n\nI'll be here if you need anything."
+  },
+  {
+    "q": "Let me turn off the light in the bedroom.",
+    "a": "I have turned off the light in bedroom."
+  },
+  {
+    "q": "What is the temperature and humidity now?",
+    "a": "Current temperature is 21.7 degrees Celsius and humidity is 89.2 percent."
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi, an AI assistant developed at MingChuan University.  How can I help you?"
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I'm Vi, an AI assistant. \n\nWhat can I do for you?"
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi, your AI assistant.  How can I help you today?"
+  },
+  {
+    "q": "And what is your name?",
+    "a": "My name is Vi."
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I'm Vi, an AI assistant."
+  },
+  {
+    "q": "Can you tell me who are you?",
+    "a": "I am Vi, an AI assistant developed at MingChuan University.  \n\nIs there anything else I can help you with?"
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "Hi! I'm Vi, your AI assistant."
+  },
+  {
+    "q": "hello",
+    "a": "Hello! 👋 \n\n\n\nHow can I help you today?"
+  },
+  {
+    "q": "Can you help me turn on the light in the garden?",
+    "a": "I have turned on the light in garden."
+  },
+  {
+    "q": "Please help me turn off the light in the garden.",
+    "a": "I have turned off the light in garden."
+  },
+  {
+    "q": "Can you help me turn on all the light in my house?",
+    "a": "I have turned on all the lights."
+  },
+  {
+    "q": "Turn off all the lights.",
+    "a": "I have turned off all the lights."
+  },
+  {
+    "q": "hello",
+    "a": "Hello! \n\nHow can I help you?"
+  },
+  {
+    "q": "What is the temperature and humidity now?",
+    "a": "Current temperature is 22.2 degrees Celsius and humidity is 86.0 percent."
+  }
+]

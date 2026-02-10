@@ -3,11 +3,14 @@ from __future__ import annotations
 import base64
 import os
 import tempfile
+from collections import deque
 import json
 import asyncio
 import logging
 import wave
 import io
+from pathlib import Path
+import threading
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 
@@ -23,6 +26,11 @@ from .assistant_logic import (
 )
 
 logger = logging.getLogger("viassistant.ws")
+ESP_INLINE_WAV_MAX_BYTES = int(os.getenv("VI_ESP_INLINE_WAV_MAX_BYTES", "65536"))
+MAX_CONVERSATION_TURNS = 5
+HISTORY_FILE_PATH = Path(__file__).resolve().parent / "ai_history.json"
+HISTORY_FILE_MAX_ENTRIES = int(os.getenv("VI_HISTORY_FILE_MAX_ENTRIES", "1000"))
+HISTORY_FILE_LOCK = threading.Lock()
 
 
 def _write_wav(path: str, pcm: bytes, sample_rate: int = 16000, channels: int = 1, sampwidth: int = 2):
@@ -33,14 +41,89 @@ def _write_wav(path: str, pcm: bytes, sample_rate: int = 16000, channels: int = 
         wf.writeframes(pcm)
 
 
+def _load_history_entries() -> list[dict[str, str]]:
+    if not HISTORY_FILE_PATH.exists():
+        return []
+
+    try:
+        raw = HISTORY_FILE_PATH.read_text(encoding="utf-8").strip()
+    except Exception:
+        logger.exception("[ws] failed reading history file: %s", HISTORY_FILE_PATH)
+        return []
+
+    if not raw:
+        return []
+
+    try:
+        data = json.loads(raw)
+    except Exception:
+        logger.exception("[ws] invalid history json: %s", HISTORY_FILE_PATH)
+        return []
+
+    if not isinstance(data, list):
+        logger.warning("[ws] history json is not a list: %s", HISTORY_FILE_PATH)
+        return []
+
+    entries: list[dict[str, str]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        q = str(item.get("q") or item.get("user") or "").strip()
+        a = str(item.get("a") or item.get("assistant") or "").strip()
+        if not q or not a:
+            continue
+
+        entries.append({"q": q, "a": a})
+
+    return entries
+
+
+def _load_recent_turns(limit: int) -> list[dict[str, str]]:
+    entries = _load_history_entries()
+    turns: list[dict[str, str]] = []
+    for item in entries[-limit:]:
+        turns.append({"user": item["q"], "assistant": item["a"]})
+    return turns
+
+
+def _append_history_entry(question: str, answer: str):
+    q = (question or "").strip()
+    a = (answer or "").strip()
+    if not q or not a:
+        return
+
+    with HISTORY_FILE_LOCK:
+        entries = _load_history_entries()
+        entries.append({"q": q, "a": a})
+
+        if HISTORY_FILE_MAX_ENTRIES > 0 and len(entries) > HISTORY_FILE_MAX_ENTRIES:
+            entries = entries[-HISTORY_FILE_MAX_ENTRIES:]
+
+        HISTORY_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        payload = json.dumps(entries, ensure_ascii=False, indent=2) + "\n"
+        temp_path = HISTORY_FILE_PATH.with_suffix(HISTORY_FILE_PATH.suffix + ".tmp")
+        try:
+            temp_path.write_text(payload, encoding="utf-8")
+            temp_path.replace(HISTORY_FILE_PATH)
+        except Exception:
+            # On Windows, atomic replace can fail when the file is locked by an editor.
+            logger.exception("[ws] history atomic replace failed, fallback direct write")
+            HISTORY_FILE_PATH.write_text(payload, encoding="utf-8")
+
+
 class ViAssistantConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self._pcm = bytearray()
         self._started = False
         self._language = "en"
         self._client = "generic"
+        self._history = deque(
+            _load_recent_turns(MAX_CONVERSATION_TURNS),
+            maxlen=MAX_CONVERSATION_TURNS,
+        )
         await self.accept()
-        logger.warning("[ws] connected")
+        logger.warning("[ws] connected history_turns=%d", len(self._history))
 
     async def receive(self, text_data=None, bytes_data=None):
         if text_data:
@@ -107,6 +190,7 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
         logger.warning("[ws] device action=%s", device_action)
 
         reply_source = "ai"
+        history_snapshot = list(self._history)
         if device_action:
             reply_source = "device"
             ai_text = _format_device_reply(device_target, device_action["state"])
@@ -124,32 +208,70 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
             )
             logger.warning("[ws] sensor query=%s", sensor_query)
         else:
-            ai_text = await asyncio.to_thread(_call_ai, stt_text)
+            ai_text = await asyncio.to_thread(_call_ai, stt_text, history_snapshot)
+
+        user_text = (stt_text or "").strip()
+        assistant_text = (ai_text or "").strip()
+        if user_text and assistant_text:
+            self._history.append({"user": user_text, "assistant": assistant_text})
+            try:
+                await asyncio.to_thread(_append_history_entry, user_text, assistant_text)
+            except Exception:
+                logger.exception("[ws] failed writing history file")
+            logger.warning("[ws] memory turns=%d", len(self._history))
+        else:
+            logger.warning(
+                "[ws] history skipped user_len=%d assistant_len=%d",
+                len(user_text),
+                len(assistant_text),
+            )
         logger.warning("[ws] reply done source=%s text_len=%d", reply_source, len(ai_text or ""))
 
         tts_bytes = await asyncio.to_thread(tts_text_to_wav_bytes, ai_text)
         logger.warning("[ws] tts done bytes=%d", len(tts_bytes or b""))
 
         if self._client == "esp32":
-            await self.send(
-                text_data=json.dumps(
-                    {
-                        "type": "result",
-                        "ok": True,
-                        "stt_text": stt_text,
-                        "ai_text": ai_text,
-                        "device_action": device_action,
-                        "device_result": device_result,
-                        "sensor_query": sensor_query,
-                        "sensor_result": sensor_result,
-                        "audio_stream": True,
-                        "audio_format": "pcm_s16le",
-                        "sample_rate": 16000,
-                        "channels": 1,
-                    }
+            can_inline_wav = bool(tts_bytes) and len(tts_bytes) <= ESP_INLINE_WAV_MAX_BYTES
+            if can_inline_wav:
+                audio_b64 = base64.b64encode(tts_bytes).decode("ascii")
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "result",
+                            "ok": True,
+                            "stt_text": stt_text,
+                            "ai_text": ai_text,
+                            "device_action": device_action,
+                            "device_result": device_result,
+                            "sensor_query": sensor_query,
+                            "sensor_result": sensor_result,
+                            "audio_stream": False,
+                            "audio_b64": audio_b64,
+                            "audio_mime": "audio/wav",
+                        }
+                    )
                 )
-            )
-            await self._send_tts_pcm_chunks(tts_bytes)
+                logger.warning("[ws] esp inline wav bytes=%d", len(tts_bytes))
+            else:
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "result",
+                            "ok": True,
+                            "stt_text": stt_text,
+                            "ai_text": ai_text,
+                            "device_action": device_action,
+                            "device_result": device_result,
+                            "sensor_query": sensor_query,
+                            "sensor_result": sensor_result,
+                            "audio_stream": True,
+                            "audio_format": "pcm_s16le",
+                            "sample_rate": 16000,
+                            "channels": 1,
+                        }
+                    )
+                )
+                await self._send_tts_pcm_chunks(tts_bytes)
         else:
             audio_b64 = base64.b64encode(tts_bytes).decode("ascii") if tts_bytes else ""
             await self.send(

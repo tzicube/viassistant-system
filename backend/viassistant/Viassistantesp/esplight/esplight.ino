@@ -10,7 +10,7 @@ const char* WIFI_PASS = "Duy31122005@";
 
 // HTTP server port 80
 WebServer server(80);
-
+const int LED_WIFI = 2;
 // GPIO mapping
 const int PIN_LIVING = 27;
 const int PIN_KITCHEN = 26;
@@ -130,6 +130,8 @@ void handleRoot() {
 void setup() {
   Serial.begin(115200);
   delay(200);
+  pinMode(LED_WIFI, OUTPUT);
+  digitalWrite(LED_WIFI, LOW);   // Tắt LED lúc boot
 
   Serial.println("\n[BOOT] ViAssistant ESP32");
 
@@ -142,7 +144,7 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\n[WIFI] Connected!");
-
+  digitalWrite(LED_WIFI, HIGH);
   IPAddress ip = WiFi.localIP();
   Serial.print("[WIFI] IP: ");
   Serial.println(ip);
