@@ -6,7 +6,7 @@ import unicodedata
 
 import requests
 from django.conf import settings
-esplight = "http://192.168.1.111"
+esplight = "http://192.168.1.103"
 _HTTP = requests.Session()
 # Avoid environment proxy settings interfering with local ESP/LAN requests.
 _HTTP.trust_env = False
@@ -42,6 +42,7 @@ _MARKDOWN_PATTERN = re.compile(
     re.MULTILINE,
 )
 _SENTENCE_SPLIT_PATTERN = re.compile(r"[.!?]+")
+_STATUS_PAIR_PATTERN = re.compile(r"([a-z_]+)=([^\s]+)")
 
 
 def _env_int(name: str, default: int, min_value: int) -> int:
@@ -136,8 +137,31 @@ def _detect_sensor_query(text: str) -> dict | None:
     return {"temperature": need_temp, "humidity": need_humidity}
 
 
+def _parse_esp_status_states(status_text: str) -> dict[str, int]:
+    states: dict[str, int] = {}
+    for key, raw_value in _STATUS_PAIR_PATTERN.findall((status_text or "").lower()):
+        if key not in _ROOM_LABELS_EN:
+            continue
+        if raw_value in {"1", "on", "high", "true"}:
+            states[key] = 1
+        elif raw_value in {"0", "off", "low", "false"}:
+            states[key] = 0
+    return states
+
+
+def _call_esp_status() -> dict[str, int]:
+    esp_base_url = getattr(settings, "ESP_BASE_URL", esplight)
+    url = f"{esp_base_url.rstrip('/')}/status"
+    response = _HTTP.get(url, timeout=(2, 5))
+    response.raise_for_status()
+    states = _parse_esp_status_states((response.text or "").strip())
+    if not states:
+        raise RuntimeError("invalid_status_payload")
+    return states
+
+
 def _call_esp_relay(room: str | list[str], state: str) -> dict:
-    esp_base_url = getattr(settings, "ESP_BASE_URL", esplight )
+    esp_base_url = getattr(settings, "ESP_BASE_URL", esplight)
     url = f"{esp_base_url.rstrip('/')}/relay"
 
     if room == "all":
@@ -161,15 +185,35 @@ def _call_esp_relay(room: str | list[str], state: str) -> dict:
             "errors": {"rooms": "empty"},
         }
 
-    if len(target_rooms) == 1:
-        room_key = target_rooms[0]
-        response = _HTTP.get(url, params={"room": room_key, "state": state}, timeout=(2, 5))
-        response.raise_for_status()
-        return {"ok": True, "text": (response.text or "").strip()}
+    desired_state = 1 if state == "on" else 0
+    status_states: dict[str, int] = {}
+    try:
+        status_states = _call_esp_status()
+    except Exception:
+        # Keep relay usable even when status endpoint is unavailable.
+        status_states = {}
+
+    already_rooms = [room_key for room_key in target_rooms if status_states.get(room_key) == desired_state]
+    rooms_to_toggle = [room_key for room_key in target_rooms if room_key not in already_rooms]
+
+    if status_states and not rooms_to_toggle:
+        summary = (
+            f"already room=all state={state}"
+            if is_all
+            else f"already rooms={','.join(target_rooms)} state={state}"
+        )
+        return {
+            "ok": True,
+            "text": summary,
+            "results": {},
+            "errors": {},
+            "already": True,
+            "already_rooms": already_rooms,
+        }
 
     results: dict[str, str] = {}
     errors: dict[str, str] = {}
-    for room_key in target_rooms:
+    for room_key in rooms_to_toggle:
         try:
             response = _HTTP.get(url, params={"room": room_key, "state": state}, timeout=(2, 5))
             response.raise_for_status()
@@ -177,9 +221,23 @@ def _call_esp_relay(room: str | list[str], state: str) -> dict:
         except Exception as exc:
             errors[room_key] = str(exc)
 
+    for room_key in already_rooms:
+        results[room_key] = f"already room={room_key} state={state}"
+
     ok = not errors
     if ok:
-        summary = f"ok room=all state={state}" if is_all else f"ok rooms={','.join(target_rooms)} state={state}"
+        if rooms_to_toggle:
+            summary = (
+                f"ok room=all state={state}"
+                if is_all
+                else f"ok rooms={','.join(target_rooms)} state={state}"
+            )
+        else:
+            summary = (
+                f"already room=all state={state}"
+                if is_all
+                else f"already rooms={','.join(target_rooms)} state={state}"
+            )
     else:
         summary = "partial_failure room=all" if is_all else f"partial_failure rooms={','.join(target_rooms)}"
     return {
@@ -187,6 +245,8 @@ def _call_esp_relay(room: str | list[str], state: str) -> dict:
         "text": summary,
         "results": results,
         "errors": errors,
+        "already": bool(status_states and len(already_rooms) == len(target_rooms)),
+        "already_rooms": already_rooms,
     }
 
 
@@ -230,7 +290,12 @@ def _call_esp_sensor() -> dict:
 
     raise RuntimeError(last_error or "sensor_unavailable")
 
-def _format_device_reply(room: str | list[str], state: str) -> str:
+def _format_device_reply(room: str | list[str], state: str, device_result: dict | None = None) -> str:
+    if device_result and device_result.get("already"):
+        if state == "on":
+            return "The device was already turned on."
+        return "The device was already turned off."
+
     if room == "all":
         if state == "on":
             return "I have turned on all the lights."

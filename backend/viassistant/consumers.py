@@ -27,6 +27,8 @@ from .assistant_logic import (
 
 logger = logging.getLogger("viassistant.ws")
 ESP_INLINE_WAV_MAX_BYTES = int(os.getenv("VI_ESP_INLINE_WAV_MAX_BYTES", "65536"))
+ESP_INLINE_TTS_MAX_CHARS = int(os.getenv("VI_ESP_INLINE_TTS_MAX_CHARS", "120"))
+ESP_TTS_STREAM_CHUNK_BYTES = int(os.getenv("VI_ESP_TTS_STREAM_CHUNK_BYTES", "1024"))
 MAX_CONVERSATION_TURNS = 5
 HISTORY_FILE_PATH = Path(__file__).resolve().parent / "ai_history.json"
 HISTORY_FILE_MAX_ENTRIES = int(os.getenv("VI_HISTORY_FILE_MAX_ENTRIES", "1000"))
@@ -112,6 +114,25 @@ def _append_history_entry(question: str, answer: str):
             HISTORY_FILE_PATH.write_text(payload, encoding="utf-8")
 
 
+def _shorten_tts_text(text: str, max_chars: int = ESP_INLINE_TTS_MAX_CHARS) -> str:
+    cleaned = " ".join((text or "").split()).strip()
+    if not cleaned or len(cleaned) <= max_chars:
+        return cleaned
+
+    clipped = cleaned[:max_chars].rstrip()
+    split_pos = max(
+        clipped.rfind("."),
+        clipped.rfind("!"),
+        clipped.rfind("?"),
+        clipped.rfind(","),
+        clipped.rfind(";"),
+        clipped.rfind(":"),
+    )
+    if split_pos >= max_chars // 2:
+        clipped = clipped[: split_pos + 1].rstrip()
+    return clipped
+
+
 class ViAssistantConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self._pcm = bytearray()
@@ -193,7 +214,7 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
         history_snapshot = list(self._history)
         if device_action:
             reply_source = "device"
-            ai_text = _format_device_reply(device_target, device_action["state"])
+            ai_text = _format_device_reply(device_target, device_action["state"], device_result)
         elif sensor_query:
             reply_source = "sensor"
             try:
@@ -227,52 +248,38 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
             )
         logger.warning("[ws] reply done source=%s text_len=%d", reply_source, len(ai_text or ""))
 
-        tts_bytes = await asyncio.to_thread(tts_text_to_wav_bytes, ai_text)
-        logger.warning("[ws] tts done bytes=%d", len(tts_bytes or b""))
-
         if self._client == "esp32":
-            can_inline_wav = bool(tts_bytes) and len(tts_bytes) <= ESP_INLINE_WAV_MAX_BYTES
-            if can_inline_wav:
-                audio_b64 = base64.b64encode(tts_bytes).decode("ascii")
-                await self.send(
-                    text_data=json.dumps(
-                        {
-                            "type": "result",
-                            "ok": True,
-                            "stt_text": stt_text,
-                            "ai_text": ai_text,
-                            "device_action": device_action,
-                            "device_result": device_result,
-                            "sensor_query": sensor_query,
-                            "sensor_result": sensor_result,
-                            "audio_stream": False,
-                            "audio_b64": audio_b64,
-                            "audio_mime": "audio/wav",
-                        }
-                    )
+            esp_tts_text = _shorten_tts_text(ai_text, ESP_INLINE_TTS_MAX_CHARS)
+            if esp_tts_text != (ai_text or "").strip():
+                logger.warning(
+                    "[ws] esp tts shortened chars=%d->%d",
+                    len((ai_text or "").strip()),
+                    len(esp_tts_text),
                 )
-                logger.warning("[ws] esp inline wav bytes=%d", len(tts_bytes))
-            else:
-                await self.send(
-                    text_data=json.dumps(
-                        {
-                            "type": "result",
-                            "ok": True,
-                            "stt_text": stt_text,
-                            "ai_text": ai_text,
-                            "device_action": device_action,
-                            "device_result": device_result,
-                            "sensor_query": sensor_query,
-                            "sensor_result": sensor_result,
-                            "audio_stream": True,
-                            "audio_format": "pcm_s16le",
-                            "sample_rate": 16000,
-                            "channels": 1,
-                        }
-                    )
+
+            tts_bytes = await asyncio.to_thread(tts_text_to_wav_bytes, esp_tts_text) if esp_tts_text else b""
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "result",
+                        "ok": True,
+                        "stt_text": stt_text,
+                        "ai_text": ai_text,
+                        "device_action": device_action,
+                        "device_result": device_result,
+                        "sensor_query": sensor_query,
+                        "sensor_result": sensor_result,
+                        "audio_stream": True,
+                        "audio_format": "pcm_s16le",
+                        "sample_rate": 16000,
+                        "channels": 1,
+                    }
                 )
-                await self._send_tts_pcm_chunks(tts_bytes)
+            )
+            await self._send_tts_pcm_chunks(tts_bytes)
         else:
+            tts_bytes = await asyncio.to_thread(tts_text_to_wav_bytes, ai_text)
+            logger.warning("[ws] tts done bytes=%d", len(tts_bytes or b""))
             audio_b64 = base64.b64encode(tts_bytes).decode("ascii") if tts_bytes else ""
             await self.send(
                 text_data=json.dumps(
@@ -313,9 +320,9 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"type": "tts_end"}))
             return
 
-        chunk_size = 1024
+        chunk_size = max(256, ESP_TTS_STREAM_CHUNK_BYTES)
         chunk_count = (len(pcm) + chunk_size - 1) // chunk_size
-        logger.warning("[ws] tts stream start pcm=%d chunks=%d", len(pcm), chunk_count)
+        logger.warning("[ws] tts stream start pcm=%d chunks=%d chunk_size=%d", len(pcm), chunk_count, chunk_size)
         await self.send(
             text_data=json.dumps(
                 {
@@ -362,3 +369,4 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                 acc += src[base + c]
             out[i] = int(acc / channels)
         return out.tobytes()
+

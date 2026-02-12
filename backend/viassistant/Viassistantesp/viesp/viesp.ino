@@ -1,12 +1,26 @@
-//OK
+// OK - ESP32S3 NO-PSRAM: MIC + OLED + WS + Bluetooth A2DP (MAP140)
+// Receive server: PCM16 mono 16k via BIN chunk -> FIFO -> Bluetooth A2DP
+// Remove I2S speaker output completely.
+// NOTE: No PSRAM => must keep RAM small.
+
 #include <WiFi.h>
+
+// Reduce static WS buffers on low-DRAM boards.
+#define WEBSOCKETS_MAX_DATA_SIZE   1024
+#define WEBSOCKETS_MAX_HEADER_SIZE 256
 #include <WebSocketsClient.h>
+
 #include "driver/i2s.h"
 #include "esp_system.h"
 
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
+// ===== Bluetooth A2DP (Classic) =====
+#include "BluetoothA2DPSource.h"
+#include "esp_bt.h"
+#include "esp_bt_main.h"
 
 // =========================
 // WIFI
@@ -17,8 +31,8 @@ const char* WIFI_PASS = "Duy31122005@";
 // =========================
 // SERVER (WebSocket)
 // =========================
-const char* WS_HOST = "192.168.1.113";
-const int WS_PORT = 8000;
+const char* WS_HOST = "192.168.1.112";
+const int   WS_PORT = 8000;
 const char* WS_PATH = "/ws/viassistant/";
 
 // =========================
@@ -28,11 +42,6 @@ const char* WS_PATH = "/ws/viassistant/";
 const int I2S_BCLK = 26;
 const int I2S_WS   = 25;
 const int I2S_DIN  = 34;
-
-// I2S AMP (MAX98357A)
-const int I2S_SPK_BCLK = 25;
-const int I2S_SPK_WS   = 19;
-const int I2S_SPK_DOUT = 23;
 
 // BUTTON
 const int BTN_PIN = 14;
@@ -44,7 +53,7 @@ const int OLED_SCL = 22;
 // =========================
 // AUDIO CONFIG
 // =========================
-const int SAMPLE_RATE = 16000;
+const int SAMPLE_RATE = 16000; // MIC input rate + server PCM rate
 
 // =========================
 // OLED
@@ -64,14 +73,14 @@ int lastBtnState = HIGH;
 WebSocketsClient ws;
 bool wsConnected = false;
 
+// FIX: avoid name conflict with esp32-hal-bt.h: bool btStarted();
+bool a2dpStarted = false;
+unsigned long a2dpStartAtMs = 0;   // deferred start time
+
 String lastAiText = "";
 
-bool audioPlaying = false;
+// track server TTS
 bool ttsStreamActive = false;
-uint8_t* playingWavBuf = nullptr;
-const uint8_t* playingPcm = nullptr;
-size_t playingPcmLen = 0;
-size_t playingPcmOffset = 0;
 size_t ttsRxBytes = 0;
 size_t ttsRxChunks = 0;
 
@@ -84,46 +93,122 @@ const unsigned long TEXT_SHOW_MS = 8000;
 // =========================
 // FACE
 // =========================
-// Eye position and size
 int leftEyeX  = 45;
 int rightEyeX = 80;
 int eyeY      = 16;
 int eyeWidth  = 25;
 int eyeHeight = 30;
 
-// Movement
 int targetOffsetX = 0;
 int targetOffsetY = 0;
 int moveSpeed = 5;
 
-// 8-direction gaze (N, NE, E, SE, S, SW, W, NW)
 int gazeDir = 0;
 unsigned long moveTime = 0;
 
-// Blink
 int blinkState = 0;                // 0 open, 1 closed
 int blinkDelayMs = 4000;
 unsigned long lastBlinkTime = 0;
 
-// Render cadence
 unsigned long lastFaceFrameMs = 0;
 const unsigned long FACE_FRAME_MS = 30;
 
-// ====== TUNE: eye travel distance ======
-int GAZE_SCALE = 2; // 1 = gần, 2 = xa, 3 = rất xa (anh tăng/giảm ở đây)
+int GAZE_SCALE = 2;
 
-// Base direction vectors (small), scale up with GAZE_SCALE
 const int8_t GAZE_8[8][2] = {
-  {  0, -7 },  // N
-  {  5, -5 },  // NE
-  {  9,  0 },  // E
-  {  5,  5 },  // SE
-  {  0,  7 },  // S
-  { -5,  5 },  // SW
-  { -9,  0 },  // W
-  { -5, -5 }   // NW
+  {  0, -7 }, {  5, -5 }, {  9,  0 }, {  5,  5 },
+  {  0,  7 }, { -5,  5 }, { -9,  0 }, { -5, -5 }
 };
 
+// =========================
+// Bluetooth A2DP -> MAP140 (stream from FIFO)
+// =========================
+BluetoothA2DPSource a2dp;
+static const char* BT_SPK_NAME = "MAP140";
+static constexpr uint8_t BT_VOL = 90;
+static constexpr int BT_SR = 44100;
+
+// NO-PSRAM => keep FIFO small
+static constexpr size_t BT_FIFO_SAMPLES_DRAM = 3000;  // try 2000 if still unstable
+
+static int16_t* btFifo = nullptr;
+static size_t btFifoSamples = 0;
+static volatile size_t btW = 0;
+static volatile size_t btR = 0;
+static portMUX_TYPE btMux = portMUX_INITIALIZER_UNLOCKED;
+
+static uint32_t rs_acc = 0;  // 16k -> 44.1k accumulator
+
+static inline void btResetFifo() {
+  portENTER_CRITICAL(&btMux);
+  btW = btR = 0;
+  rs_acc = 0;
+  portEXIT_CRITICAL(&btMux);
+}
+
+static inline void btPush_unsafe(int16_t s) {
+  btFifo[btW] = s;
+  btW = (btW + 1) % btFifoSamples;
+  if (btW == btR) btR = (btR + 1) % btFifoSamples;
+}
+
+static inline bool btPop_unsafe(int16_t& s) {
+  if (btR == btW) return false;
+  s = btFifo[btR];
+  btR = (btR + 1) % btFifoSamples;
+  return true;
+}
+
+static void pushPcm16kToBtFifo(const uint8_t* data, size_t len) {
+  if (!btFifo || btFifoSamples == 0 || !data || len < 2) return;
+  len &= ~((size_t)1);
+
+  portENTER_CRITICAL(&btMux);
+  for (size_t i = 0; i < len; i += 2) {
+    int16_t s16 = (int16_t)((uint16_t)data[i] | ((uint16_t)data[i + 1] << 8));
+    rs_acc += (uint32_t)BT_SR;
+    while (rs_acc >= (uint32_t)SAMPLE_RATE) {
+      rs_acc -= (uint32_t)SAMPLE_RATE;
+      btPush_unsafe(s16);
+    }
+  }
+  portEXIT_CRITICAL(&btMux);
+}
+
+// A2DP callback: fill stereo 16-bit interleaved @44100.
+static int32_t a2dp_cb(uint8_t* data, int32_t len) {
+  if (!data || len <= 0 || !btFifo || btFifoSamples == 0) return 0;
+
+  int32_t usable = (len / 4) * 4;
+  int16_t* out = (int16_t*)data;
+  int32_t frames = usable / 4;
+
+  portENTER_CRITICAL(&btMux);
+  for (int32_t f = 0; f < frames; f++) {
+    int16_t s = 0;
+    (void)btPop_unsafe(s);
+    out[f * 2 + 0] = s;
+    out[f * 2 + 1] = s;
+  }
+  portEXIT_CRITICAL(&btMux);
+  return usable;
+}
+
+static void startA2dpIfNeeded() {
+  if (a2dpStarted) return;
+
+  // Important: A2DP eats heap. Start only when WS already stable.
+  a2dp.set_volume(BT_VOL);
+  a2dp.start_raw(BT_SPK_NAME, a2dp_cb);
+  a2dpStarted = true;
+
+  Serial.printf("[bt] A2DP started -> %s vol=%u free_heap=%u\n",
+                BT_SPK_NAME, BT_VOL, (unsigned)ESP.getFreeHeap());
+}
+
+// =========================
+// UTIL
+// =========================
 const char* resetReasonToString(esp_reset_reason_t reason) {
   switch (reason) {
     case ESP_RST_UNKNOWN: return "unknown";
@@ -149,6 +234,39 @@ String payloadToString(const uint8_t* payload, size_t length) {
   return out;
 }
 
+// JSON string extractor (simple)
+bool extractJsonString(const String& body, const String& key, String& out) {
+  String needle = "\"" + key + "\"";
+  int idx = body.indexOf(needle);
+  if (idx < 0) return false;
+
+  int colon = body.indexOf(':', idx + needle.length());
+  if (colon < 0) return false;
+
+  int q1 = body.indexOf('\"', colon + 1);
+  if (q1 < 0) return false;
+
+  int q2 = q1 + 1;
+  bool escaped = false;
+  while (q2 < body.length()) {
+    char c = body[q2];
+    if (c == '\\' && !escaped) { escaped = true; q2++; continue; }
+    if (c == '\"' && !escaped) break;
+    escaped = false;
+    q2++;
+  }
+  if (q2 >= body.length()) return false;
+
+  out = body.substring(q1 + 1, q2);
+  out.replace("\\n", "\n");
+  out.replace("\\\"", "\"");
+  out.replace("\\\\", "\\");
+  return true;
+}
+
+// =========================
+// OLED DRAW
+// =========================
 void drawEye(int x, int y, int w, int h) {
   display.fillRoundRect(x, y, w, h, 5, SSD1306_WHITE);
 }
@@ -163,14 +281,13 @@ void drawListeningAnimation(unsigned long now, int offsetX, int offsetY) {
 
   for (int i = 0; i < 3; i++) {
     int amp = (i <= level) ? (i + 1) * 4 : 2;
-    int h = 4 + amp;
-    int y = midY - (h / 2);
-    display.fillRect(leftBaseX - (i * 4), y, 2, h, SSD1306_WHITE);
-    display.fillRect(rightBaseX + (i * 4), y, 2, h, SSD1306_WHITE);
+    int hh = 4 + amp;
+    int yy = midY - (hh / 2);
+    display.fillRect(leftBaseX - (i * 4), yy, 2, hh, SSD1306_WHITE);
+    display.fillRect(rightBaseX + (i * 4), yy, 2, hh, SSD1306_WHITE);
   }
 }
 
-// Cycle direction (8 hướng)
 void advanceGazeDirection() {
   gazeDir = (gazeDir + 1) % 8;
   targetOffsetX = (int)GAZE_8[gazeDir][0] * GAZE_SCALE;
@@ -213,26 +330,18 @@ void faceUpdateAndDraw(unsigned long now) {
   display.clearDisplay();
   drawEyesWithOffset(offsetX, offsetY);
 
-  if (recording) {
-    drawListeningAnimation(now, offsetX, offsetY);
-  }
+  if (recording) drawListeningAnimation(now, offsetX, offsetY);
 
-  // NO TEXT in FACE mode
   display.display();
 }
 
-// THINKING effect: 3 dots + small spinner (no text)
 void drawThinkingEffect(unsigned long now) {
-  // 3 dots: . .. ...
-  int dots = (int)((now / 280UL) % 4UL); // 0..3
+  int dots = (int)((now / 280UL) % 4UL);
   int cx = 64;
   int y = 54;
 
-  for (int i = 0; i < dots; i++) {
-    display.fillCircle(cx - 6 + i * 6, y, 1, SSD1306_WHITE);
-  }
+  for (int i = 0; i < dots; i++) display.fillCircle(cx - 6 + i * 6, y, 1, SSD1306_WHITE);
 
-  // spinner: 8 points around center
   int s = (int)((now / 120UL) % 8UL);
   int mx = 64;
   int my = 46;
@@ -241,7 +350,6 @@ void drawThinkingEffect(unsigned long now) {
     { 0,  6 }, { -4, 4 }, { -6, 0 }, { -4, -4 }
   };
 
-  // draw faint ring points (outline) + one "active" point
   for (int i = 0; i < 8; i++) {
     int px = mx + RING[i][0];
     int py = my + RING[i][1];
@@ -253,7 +361,6 @@ void drawThinkingEffect(unsigned long now) {
 void thinkingUpdateAndDraw(unsigned long now) {
   updateBlink(now);
 
-  // thinking: move faster a bit
   if (blinkState == 0 && (now - moveTime > (unsigned long)random(450, 900))) {
     advanceGazeDirection();
     moveTime = now;
@@ -266,16 +373,10 @@ void thinkingUpdateAndDraw(unsigned long now) {
 
   display.clearDisplay();
   drawEyesWithOffset(offsetX, offsetY);
-
-  // No text, only effects
   drawThinkingEffect(now);
-
   display.display();
 }
 
-// =========================
-// OLED TEXT (ONLY "Vi:" shown)
-// =========================
 void oledShowTextWrapped(const String& text) {
   display.clearDisplay();
   display.setTextSize(1);
@@ -287,9 +388,9 @@ void oledShowTextWrapped(const String& text) {
   int start = 0;
   int printedLines = 1;
 
-  while (start < text.length() && printedLines < 8) {
+  while (start < (int)text.length() && printedLines < 8) {
     int end = min((int)text.length(), start + maxCharsPerLine);
-    if (end < text.length()) {
+    if (end < (int)text.length()) {
       int lastSpace = text.lastIndexOf(' ', end);
       if (lastSpace > start) end = lastSpace;
     }
@@ -302,23 +403,13 @@ void oledShowTextWrapped(const String& text) {
   display.display();
 }
 
-void setListeningUi() {
-  oledMode = OLED_FACE;
-  textModeUntilMs = 0;
-  lastFaceFrameMs = 0;
-}
-
-void setThinkingUi() {
-  oledMode = OLED_THINKING;
-  textModeUntilMs = 0;
-  lastFaceFrameMs = 0;
-}
+void setListeningUi() { oledMode = OLED_FACE; textModeUntilMs = 0; lastFaceFrameMs = 0; }
+void setThinkingUi()  { oledMode = OLED_THINKING; textModeUntilMs = 0; lastFaceFrameMs = 0; }
 
 void setServerUnavailableUi() {
   oledMode = OLED_SERVER_DOWN;
   textModeUntilMs = 0;
 
-  // no text. show "closed eyes"
   display.clearDisplay();
   display.fillRect(leftEyeX,  eyeY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
   display.fillRect(rightEyeX, eyeY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
@@ -326,7 +417,7 @@ void setServerUnavailableUi() {
 }
 
 // =========================
-// I2S
+// I2S MIC RX ONLY (low DMA)
 // =========================
 void setupI2SRx() {
   i2s_config_t i2s_config = {
@@ -336,8 +427,11 @@ void setupI2SRx() {
     .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
     .communication_format = I2S_COMM_FORMAT_I2S,
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 8,
-    .dma_buf_len = 512,
+
+    // reduce DMA usage
+    .dma_buf_count = 4,
+    .dma_buf_len = 256,
+
     .use_apll = false,
     .tx_desc_auto_clear = false,
     .fixed_mclk = 0
@@ -355,228 +449,13 @@ void setupI2SRx() {
   i2s_zero_dma_buffer(I2S_NUM_0);
 }
 
-void setupI2STx() {
-  i2s_config_t i2s_config = {
-    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
-    .sample_rate = SAMPLE_RATE,
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT, // duplicate mono to L/R
-    .communication_format = I2S_COMM_FORMAT_I2S,
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 8,
-    .dma_buf_len = 256,
-    .use_apll = false,
-    .tx_desc_auto_clear = true,
-    .fixed_mclk = 0
-  };
-
-  i2s_pin_config_t pin_config = {
-    .bck_io_num = I2S_SPK_BCLK,
-    .ws_io_num = I2S_SPK_WS,
-    .data_out_num = I2S_SPK_DOUT,
-    .data_in_num = -1
-  };
-
-  esp_err_t err = i2s_driver_install(I2S_NUM_1, &i2s_config, 0, NULL);
-  if (err != ESP_OK) {
-    Serial.printf("[i2s] tx driver install failed: %d\n", (int)err);
-    return;
-  }
-  err = i2s_set_pin(I2S_NUM_1, &pin_config);
-  if (err != ESP_OK) {
-    Serial.printf("[i2s] tx set pin failed: %d\n", (int)err);
-  }
-  i2s_zero_dma_buffer(I2S_NUM_1);
-}
-
-// =========================
-// Base64 + WAV parse + play
-// =========================
-int _b64_index(char c) {
-  if (c >= 'A' && c <= 'Z') return c - 'A';
-  if (c >= 'a' && c <= 'z') return c - 'a' + 26;
-  if (c >= '0' && c <= '9') return c - '0' + 52;
-  if (c == '+') return 62;
-  if (c == '/') return 63;
-  return -1;
-}
-
-bool decodeBase64(const String& in, uint8_t** outBuf, size_t* outLen) {
-  size_t len = in.length();
-  if (len == 0) return false;
-  size_t pad = 0;
-  if (in.endsWith("==")) pad = 2;
-  else if (in.endsWith("=")) pad = 1;
-  size_t outSize = (len * 3) / 4 - pad;
-
-  uint8_t* buf = (uint8_t*)malloc(outSize);
-  if (!buf) return false;
-
-  size_t oi = 0;
-  int val = 0, valb = -8;
-  for (size_t i = 0; i < len; i++) {
-    int c = _b64_index(in[i]);
-    if (c < 0) continue;
-    val = (val << 6) + c;
-    valb += 6;
-    if (valb >= 0) {
-      buf[oi++] = (uint8_t)((val >> valb) & 0xFF);
-      valb -= 8;
-      if (oi >= outSize) break;
-    }
-  }
-  *outBuf = buf;
-  *outLen = oi;
-  return true;
-}
-
-bool extractJsonString(const String& body, const String& key, String& out) {
-  String needle = "\"" + key + "\"";
-  int idx = body.indexOf(needle);
-  if (idx < 0) return false;
-
-  int colon = body.indexOf(':', idx + needle.length());
-  if (colon < 0) return false;
-
-  int q1 = body.indexOf('\"', colon + 1);
-  if (q1 < 0) return false;
-
-  int q2 = q1 + 1;
-  bool escaped = false;
-  while (q2 < body.length()) {
-    char c = body[q2];
-    if (c == '\\' && !escaped) { escaped = true; q2++; continue; }
-    if (c == '\"' && !escaped) break;
-    escaped = false;
-    q2++;
-  }
-  if (q2 >= body.length()) return false;
-
-  out = body.substring(q1 + 1, q2);
-  out.replace("\\n", "\n");
-  out.replace("\\\"", "\"");
-  out.replace("\\\\", "\\");
-  return true;
-}
-
-bool parseWavData(const uint8_t* wav, size_t wavLen, const uint8_t** pcm, size_t* pcmLen) {
-  if (!wav || wavLen < 44) return false;
-  if (!(wav[0] == 'R' && wav[1] == 'I' && wav[2] == 'F' && wav[3] == 'F')) return false;
-  if (!(wav[8] == 'W' && wav[9] == 'A' && wav[10] == 'V' && wav[11] == 'E')) return false;
-
-  size_t i = 12;
-  while (i + 8 <= wavLen) {
-    uint32_t chunkSize = (uint32_t)wav[i + 4] |
-                         ((uint32_t)wav[i + 5] << 8) |
-                         ((uint32_t)wav[i + 6] << 16) |
-                         ((uint32_t)wav[i + 7] << 24);
-    if (wav[i] == 'd' && wav[i + 1] == 'a' && wav[i + 2] == 't' && wav[i + 3] == 'a') {
-      size_t dataPos = i + 8;
-      if (dataPos + chunkSize > wavLen) return false;
-      *pcm = wav + dataPos;
-      *pcmLen = chunkSize;
-      return true;
-    }
-    i += 8 + chunkSize + (chunkSize & 1);
-  }
-  return false;
-}
-
-size_t writeMonoToI2S(const uint8_t* pcm, size_t pcmLen, TickType_t timeoutTicks) {
-  if (!pcm || pcmLen < 2) return 0;
-
-  const size_t chunk = 512;
-  static int16_t stereoBuf[512]; // 256 mono samples -> 512 stereo samples
-  size_t offset = 0;
-
-  while (offset < pcmLen) {
-    size_t toWrite = min(chunk, pcmLen - offset);
-    toWrite &= ~((size_t)1);
-    if (toWrite == 0) break;
-
-    size_t monoSamples = toWrite / 2;
-    for (size_t i = 0; i < monoSamples; i++) {
-      uint16_t lo = pcm[offset + i * 2];
-      uint16_t hi = pcm[offset + i * 2 + 1];
-      int16_t s = (int16_t)((hi << 8) | lo);
-      stereoBuf[i * 2] = s;
-      stereoBuf[i * 2 + 1] = s;
-    }
-
-    size_t stereoBytes = monoSamples * 4;
-    size_t written = 0;
-    esp_err_t err = i2s_write(I2S_NUM_1, stereoBuf, stereoBytes, &written, timeoutTicks);
-    if (err != ESP_OK || written == 0) break;
-
-    offset += (written / 4) * 2;
-    if (written < stereoBytes) break;
-  }
-  return offset;
-}
-
-void stopAudioPlayback() {
-  if (playingWavBuf) {
-    free(playingWavBuf);
-    playingWavBuf = nullptr;
-  }
-  playingPcm = nullptr;
-  playingPcmLen = 0;
-  playingPcmOffset = 0;
-  audioPlaying = false;
-}
-
-bool startAudioPlaybackFromBase64(const String& audioB64) {
-  stopAudioPlayback();
-
-  size_t wavLen = 0;
-  if (!decodeBase64(audioB64, &playingWavBuf, &wavLen)) return false;
-
-  const uint8_t* pcm = nullptr;
-  size_t pcmLen = 0;
-  bool ok = parseWavData(playingWavBuf, wavLen, &pcm, &pcmLen);
-  if (!ok) {
-    stopAudioPlayback();
-    return false;
-  }
-
-  playingPcm = pcm;
-  playingPcmLen = pcmLen;
-  playingPcmOffset = 0;
-  audioPlaying = true;
-  return true;
-}
-
-void serviceAudioPlayback() {
-  if (!audioPlaying || !playingPcm || playingPcmOffset >= playingPcmLen) return;
-
-  const size_t chunk = 512;
-  size_t toWrite = min(chunk, playingPcmLen - playingPcmOffset);
-  size_t consumed = writeMonoToI2S(playingPcm + playingPcmOffset, toWrite, pdMS_TO_TICKS(4));
-  if (consumed == 0) return;
-  playingPcmOffset += consumed;
-
-  if (playingPcmOffset >= playingPcmLen) stopAudioPlayback();
-}
-
-void playPcmChunkNow(const uint8_t* data, size_t len) {
-  if (!data || len == 0) return;
-  size_t offset = 0;
-  while (offset < len) {
-    size_t consumed = writeMonoToI2S(data + offset, len - offset, pdMS_TO_TICKS(6));
-    if (consumed == 0) break;
-    offset += consumed;
-  }
-}
-
 // =========================
 // WS handling
 // =========================
 void handleWsText(const String& body) {
   String aiText;
-  String audioB64;
   String msgType;
 
-  // Any WS text during THINKING -> server started responding -> leave thinking
   if (oledMode == OLED_THINKING) {
     oledMode = OLED_FACE;
     lastFaceFrameMs = 0;
@@ -587,7 +466,7 @@ void handleWsText(const String& body) {
       ttsStreamActive = true;
       ttsRxBytes = 0;
       ttsRxChunks = 0;
-      stopAudioPlayback();
+      btResetFifo();
       Serial.println("[tts] start");
     } else if (msgType == "tts_end") {
       ttsStreamActive = false;
@@ -607,11 +486,6 @@ void handleWsText(const String& body) {
     textModeUntilMs = millis() + TEXT_SHOW_MS;
     oledShowTextWrapped(lastAiText);
   }
-
-  if (extractJsonString(body, "audio_b64", audioB64)) {
-    bool ok = startAudioPlaybackFromBase64(audioB64);
-    if (ok) serviceAudioPlayback();
-  }
 }
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
@@ -619,7 +493,11 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     case WStype_CONNECTED:
       wsConnected = true;
       ttsStreamActive = false;
-      Serial.println("[ws] connected");
+      Serial.printf("[ws] connected -> ws://%s:%d%s\n", WS_HOST, WS_PORT, WS_PATH);
+
+      // defer A2DP start (avoid peak memory right in handshake)
+      if (!a2dpStarted) a2dpStartAtMs = millis() + 1500;
+
       oledMode = OLED_FACE;
       textModeUntilMs = 0;
       lastFaceFrameMs = 0;
@@ -629,8 +507,15 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       wsConnected = false;
       recording = false;
       ttsStreamActive = false;
-      stopAudioPlayback();
-      Serial.println("[ws] disconnected");
+      btResetFifo();
+      a2dpStartAtMs = 0;
+
+      if (payload && length) {
+        String reason = payloadToString(payload, length);
+        Serial.printf("[ws] disconnected: %s\n", reason.c_str());
+      } else {
+        Serial.println("[ws] disconnected");
+      }
       setServerUnavailableUi();
       break;
 
@@ -644,7 +529,7 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       if (ttsStreamActive && length > 0) {
         ttsRxChunks++;
         ttsRxBytes += length;
-        playPcmChunkNow(payload, length);
+        pushPcm16kToBtFifo(payload, length);
       }
       break;
 
@@ -652,8 +537,15 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       wsConnected = false;
       recording = false;
       ttsStreamActive = false;
-      stopAudioPlayback();
-      Serial.println("[ws] error");
+      btResetFifo();
+      a2dpStartAtMs = 0;
+
+      if (payload && length) {
+        String err = payloadToString(payload, length);
+        Serial.printf("[ws] error: %s\n", err.c_str());
+      } else {
+        Serial.println("[ws] error");
+      }
       setServerUnavailableUi();
       break;
 
@@ -668,8 +560,13 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 void setup() {
   Serial.begin(115200);
   delay(200);
+
   esp_reset_reason_t resetReason = esp_reset_reason();
   Serial.printf("[boot] reset_reason=%d (%s)\n", (int)resetReason, resetReasonToString(resetReason));
+  Serial.printf("[mem] heap=%u psram=%u psramFree=%u\n",
+                (unsigned)ESP.getFreeHeap(),
+                (unsigned)ESP.getPsramSize(),
+                (unsigned)ESP.getFreePsram());
 
   pinMode(BTN_PIN, INPUT_PULLUP);
 
@@ -680,16 +577,36 @@ void setup() {
   oledMode = OLED_FACE;
 
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED) delay(200);
+  Serial.printf("[wifi] connected ip=%s rssi=%d\n",
+                WiFi.localIP().toString().c_str(), WiFi.RSSI());
 
+  // MIC RX
   setupI2SRx();
-  setupI2STx();
 
-  ws.begin(WS_HOST, WS_PORT, WS_PATH);
+  // FIFO DRAM (small)
+  btFifo = (int16_t*)malloc(BT_FIFO_SAMPLES_DRAM * sizeof(int16_t));
+  btFifoSamples = btFifo ? BT_FIFO_SAMPLES_DRAM : 0;
+  Serial.printf("[bt] fifo DRAM=%u samples\n", (unsigned)btFifoSamples);
+  btResetFifo();
+
+  // Free BLE RAM (A2DP uses Classic)
+  esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+
+  Serial.printf("[bt] deferred start free_heap=%u\n", (unsigned)ESP.getFreeHeap());
+
+  // WS
+  String wsHeaders = String("Origin: http://") + WS_HOST + ":" + String(WS_PORT);
+  ws.setExtraHeaders(wsHeaders.c_str());
+  ws.begin(WS_HOST, WS_PORT, WS_PATH, "");
   ws.onEvent(webSocketEvent);
   ws.setReconnectInterval(2000);
   ws.enableHeartbeat(30000, 5000, 3);
+
+  Serial.printf("[ws] connecting -> ws://%s:%d%s free_heap=%u\n",
+                WS_HOST, WS_PORT, WS_PATH, (unsigned)ESP.getFreeHeap());
 
   setServerUnavailableUi();
 }
@@ -697,6 +614,12 @@ void setup() {
 void loop() {
   unsigned long now = millis();
   ws.loop();
+
+  // Start A2DP later (NO-PSRAM stabilizer)
+  if (wsConnected && !a2dpStarted && a2dpStartAtMs != 0 && (long)(now - a2dpStartAtMs) >= 0) {
+    startA2dpIfNeeded();
+    a2dpStartAtMs = 0;
+  }
 
   if (wsConnected) {
     // Button
@@ -709,14 +632,13 @@ void loop() {
         setListeningUi();
         ws.sendTXT("{\"type\":\"start\",\"language\":\"en\",\"client\":\"esp32\"}");
       } else {
-        // stop -> enter THINKING mode until server replies
         setThinkingUi();
         ws.sendTXT("{\"type\":\"stop\"}");
       }
     }
     lastBtnState = btn;
 
-    // Audio streaming MIC -> WS BIN
+    // MIC -> WS BIN (PCM16 16k mono)
     if (recording) {
       int32_t samples[256];
       size_t bytesRead = 0;
@@ -727,7 +649,7 @@ void loop() {
       size_t outIdx = 0;
 
       for (size_t i = 0; i < n; i++) {
-        int32_t s = samples[i] >> 14; // 32-bit to 16-bit
+        int32_t s = samples[i] >> 14; // 32->16
         int16_t s16 = (int16_t)s;
         outBuf[outIdx++] = (uint8_t)(s16 & 0xff);
         outBuf[outIdx++] = (uint8_t)((s16 >> 8) & 0xff);
@@ -740,11 +662,11 @@ void loop() {
       if (outIdx > 0) ws.sendBIN(outBuf, outIdx);
     }
 
-    serviceAudioPlayback();
   } else {
     recording = false;
     ttsStreamActive = false;
-    stopAudioPlayback();
+    btResetFifo();
+    a2dpStartAtMs = 0;
     if (oledMode != OLED_SERVER_DOWN) setServerUnavailableUi();
     lastBtnState = digitalRead(BTN_PIN);
   }
@@ -771,4 +693,7 @@ void loop() {
       thinkingUpdateAndDraw(now);
     }
   }
+
+  // Let WiFi/BT tasks run
+  delay(1);
 }

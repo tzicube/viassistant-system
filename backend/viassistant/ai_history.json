@@ -286,5 +286,73 @@
   {
     "q": "What is the temperature and humidity now?",
     "a": "Current temperature is 22.2 degrees Celsius and humidity is 86.0 percent."
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant, an AI assistant developed at MingChuan University.  How can I help you today?"
+  },
+  {
+    "q": "How are you today?",
+    "a": "As an AI, I don't have feelings, but I'm ready to assist you! \n\n\n\nWhat can I do for you?"
+  },
+  {
+    "q": "Can you help me turn off the living room light?",
+    "a": "I have turned off the light in living room."
+  },
+  {
+    "q": "Can you help me turn on the living room light?",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "What is the temperature and humidity now?",
+    "a": "I could not read temperature and humidity right now."
+  },
+  {
+    "q": "Hello, could you help me, tell me what is the humidity and temperature now?",
+    "a": "Current temperature is 22.3 degrees Celsius and humidity is 87.8 percent."
+  },
+  {
+    "q": "I love you.",
+    "a": "As an AI, I don't have feelings or personal relationships.  Is there anything else I can help you with?"
+  },
+  {
+    "q": "Hello, how's the day? It'll be nice to meet you.",
+    "a": "It is a good day. As an AI, I don't have social interactions like meeting people."
+  },
+  {
+    "q": "Hello.",
+    "a": "Hello.  How can I help you today?"
+  },
+  {
+    "q": "Bye.",
+    "a": "Goodbye."
+  },
+  {
+    "q": "Thanks for watching!",
+    "a": "You're welcome. Is there anything else I can assist you with?"
+  },
+  {
+    "q": "Hello, who are you?",
+    "a": "I am Vi Assistant, an AI developed at MingChuan University.  How can I help you?"
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "As an AI, I don't have feelings, but I'm ready to assist you. What can I do for you today?"
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am functioning well.  How can I help you?"
+  },
+  {
+    "q": "Oh, can you help me turn on the light?",
+    "a": "As a text-based AI, I cannot interact with physical objects like lights."
+  },
+  {
+    "q": "How",
+    "a": "I am a language model and exist only in the digital world."
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am functioning as expected.  Is there anything I can assist you with?"
   }
 ]
