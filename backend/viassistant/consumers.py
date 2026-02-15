@@ -9,12 +9,17 @@ import asyncio
 import logging
 import wave
 import io
+import platform
+import shutil
+import subprocess
 from pathlib import Path
 import threading
+from typing import Optional
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 from .voice_pipeline import STTConfig, stt_wav_to_text, tts_text_to_wav_bytes
+from .bluetooth_audio import play_tts_audio, init_bluetooth_speaker
 from .assistant_logic import (
     _call_ai,
     _call_esp_relay,
@@ -28,11 +33,17 @@ from .assistant_logic import (
 logger = logging.getLogger("viassistant.ws")
 ESP_INLINE_WAV_MAX_BYTES = int(os.getenv("VI_ESP_INLINE_WAV_MAX_BYTES", "65536"))
 ESP_INLINE_TTS_MAX_CHARS = int(os.getenv("VI_ESP_INLINE_TTS_MAX_CHARS", "120"))
-ESP_TTS_STREAM_CHUNK_BYTES = int(os.getenv("VI_ESP_TTS_STREAM_CHUNK_BYTES", "1024"))
+ESP_TTS_STREAM_CHUNK_BYTES = int(os.getenv("VI_ESP_TTS_STREAM_CHUNK_BYTES", "480"))
+ESP_TTS_STREAM_PREFILL_CHUNKS = int(os.getenv("VI_ESP_TTS_STREAM_PREFILL_CHUNKS", "10"))
+ESP_TTS_STREAM_PACE_FACTOR = float(os.getenv("VI_ESP_TTS_STREAM_PACE_FACTOR", "1.00"))
+BT_SPEAKER_NAME = os.getenv("VI_BT_SPEAKER_NAME", "MAP140")
+DEBUG_SAVE_TTS = os.getenv("VI_DEBUG_SAVE_TTS", "0") == "1"
 MAX_CONVERSATION_TURNS = 5
 HISTORY_FILE_PATH = Path(__file__).resolve().parent / "ai_history.json"
 HISTORY_FILE_MAX_ENTRIES = int(os.getenv("VI_HISTORY_FILE_MAX_ENTRIES", "1000"))
 HISTORY_FILE_LOCK = threading.Lock()
+_BT_INIT_LOCK: Optional[asyncio.Lock] = None
+_BT_READY = False
 
 
 def _write_wav(path: str, pcm: bytes, sample_rate: int = 16000, channels: int = 1, sampwidth: int = 2):
@@ -41,6 +52,48 @@ def _write_wav(path: str, pcm: bytes, sample_rate: int = 16000, channels: int = 
         wf.setsampwidth(sampwidth)
         wf.setframerate(sample_rate)
         wf.writeframes(pcm)
+
+
+def _play_wav_bytes_local(wav_bytes: bytes) -> None:
+    """Play wav bytes on the server's default audio output (blocking)."""
+    if not wav_bytes:
+        return
+    fd, path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    Path(path).write_bytes(wav_bytes)
+    try:
+        if platform.system() == "Windows":
+            try:
+                import winsound
+
+                winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_SYNC | winsound.SND_NODEFAULT)
+                logger.info("[ws] local playback via winsound")
+            except Exception:
+                logger.exception("[ws] winsound failed, fallback PowerShell SoundPlayer")
+                ps_cmd = [
+                    "powershell",
+                    "-Command",
+                    "(New-Object Media.SoundPlayer '{0}').PlaySync()".format(path.replace("'", "''")),
+                ]
+                subprocess.run(ps_cmd, check=False, creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            player = shutil.which("ffplay") or shutil.which("aplay")
+            if player:
+                cmd = (
+                    [player, "-nodisp", "-autoexit", "-loglevel", "quiet", path]
+                    if "ffplay" in player
+                    else [player, path]
+                )
+                subprocess.run(cmd, check=False)
+            else:
+                logger.warning("[ws] local playback skipped (no player found)")
+    except Exception:
+        logger.exception("[ws] local playback failed")
+    finally:
+        try:
+            os.remove(path)
+        except Exception:
+            pass
 
 
 def _load_history_entries() -> list[dict[str, str]]:
@@ -131,6 +184,61 @@ def _shorten_tts_text(text: str, max_chars: int = ESP_INLINE_TTS_MAX_CHARS) -> s
     if split_pos >= max_chars // 2:
         clipped = clipped[: split_pos + 1].rstrip()
     return clipped
+
+
+def _debug_save_wav(wav_bytes: bytes, label: str):
+    if not DEBUG_SAVE_TTS or not wav_bytes:
+        return
+    try:
+        path = Path(__file__).resolve().parent / f"debug_tts_{label}.wav"
+        path.write_bytes(wav_bytes)
+        logger.warning("[ws] debug saved tts wav -> %s (%d bytes)", path.name, len(wav_bytes))
+    except Exception:
+        logger.exception("[ws] failed saving debug tts wav")
+
+
+def _normalize_wav_header(wav_bytes: bytes) -> bytes:
+    """
+    Some TTS outputs carry bogus nframes (e.g., 0x7fffffff) causing winsound to fail.
+    Re-wrap frames with a clean WAV header.
+    """
+    try:
+        with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
+            params = wf.getparams()
+            frames = wf.readframes(wf.getnframes())
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf2:
+            wf2.setnchannels(params.nchannels)
+            wf2.setsampwidth(params.sampwidth)
+            wf2.setframerate(params.framerate)
+            wf2.writeframes(frames)
+        fixed = buf.getvalue()
+        return fixed if fixed else wav_bytes
+    except Exception:
+        logger.exception("[ws] normalize wav header failed")
+        return wav_bytes
+
+
+async def _ensure_bt_ready() -> bool:
+    """
+    Init Bluetooth speaker once (no-op if already ready).
+    Windows path always returns True but we keep flag for symmetry.
+    """
+    global _BT_INIT_LOCK, _BT_READY
+    if _BT_READY:
+        return True
+    if _BT_INIT_LOCK is None:
+        _BT_INIT_LOCK = asyncio.Lock()
+    async with _BT_INIT_LOCK:
+        if _BT_READY:
+            return True
+        try:
+            ok = await init_bluetooth_speaker(BT_SPEAKER_NAME)
+        except Exception:
+            logger.exception("[bt] init failed")
+            ok = False
+        _BT_READY = ok
+        return ok
 
 
 class ViAssistantConsumer(AsyncWebsocketConsumer):
@@ -257,7 +365,26 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                     len(esp_tts_text),
                 )
 
-            tts_bytes = await asyncio.to_thread(tts_text_to_wav_bytes, esp_tts_text) if esp_tts_text else b""
+            tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, esp_tts_text) if esp_tts_text else b""
+            tts_bytes = _normalize_wav_header(tts_raw)
+            _debug_save_wav(tts_bytes, "esp")
+            
+            # Play audio on Bluetooth speaker (MAP140)
+            if tts_bytes:
+                try:
+                    bt_ok = await _ensure_bt_ready()
+                    if bt_ok:
+                        logger.info("[ws] streaming TTS audio to Bluetooth speaker")
+                        played = await play_tts_audio(tts_bytes)
+                        if not played:
+                            logger.warning("[ws] Bluetooth audio playback reported failure, fallback local")
+                            await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
+                    else:
+                        logger.warning("[ws] Bluetooth init failed, skip playback")
+                except Exception as e:
+                    logger.warning("[ws] Bluetooth audio playback failed: %s", e)
+                    await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
+            
             await self.send(
                 text_data=json.dumps(
                     {
@@ -278,8 +405,27 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
             )
             await self._send_tts_pcm_chunks(tts_bytes)
         else:
-            tts_bytes = await asyncio.to_thread(tts_text_to_wav_bytes, ai_text)
+            tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, ai_text)
+            tts_bytes = _normalize_wav_header(tts_raw)
             logger.warning("[ws] tts done bytes=%d", len(tts_bytes or b""))
+            _debug_save_wav(tts_bytes, "server")
+            
+            # Play audio on Bluetooth speaker (MAP140)
+            if tts_bytes:
+                try:
+                    bt_ok = await _ensure_bt_ready()
+                    if bt_ok:
+                        logger.info("[ws] streaming TTS audio to Bluetooth speaker")
+                        played = await play_tts_audio(tts_bytes)
+                        if not played:
+                            logger.warning("[ws] Bluetooth audio playback reported failure, fallback local")
+                            await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
+                    else:
+                        logger.warning("[ws] Bluetooth init failed, skip playback")
+                except Exception as e:
+                    logger.warning("[ws] Bluetooth audio playback failed: %s", e)
+                    await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
+            
             audio_b64 = base64.b64encode(tts_bytes).decode("ascii") if tts_bytes else ""
             await self.send(
                 text_data=json.dumps(
@@ -320,9 +466,19 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"type": "tts_end"}))
             return
 
-        chunk_size = max(256, ESP_TTS_STREAM_CHUNK_BYTES)
+        chunk_size = max(320, ESP_TTS_STREAM_CHUNK_BYTES)
+        chunk_size &= ~1  # keep 16-bit sample alignment
         chunk_count = (len(pcm) + chunk_size - 1) // chunk_size
-        logger.warning("[ws] tts stream start pcm=%d chunks=%d chunk_size=%d", len(pcm), chunk_count, chunk_size)
+        prefill_chunks = max(0, ESP_TTS_STREAM_PREFILL_CHUNKS)
+        pace_factor = min(max(0.5, ESP_TTS_STREAM_PACE_FACTOR), 1.2)
+        logger.warning(
+            "[ws] tts stream start pcm=%d chunks=%d chunk_size=%d prefill=%d pace=%.2f",
+            len(pcm),
+            chunk_count,
+            chunk_size,
+            prefill_chunks,
+            pace_factor,
+        )
         await self.send(
             text_data=json.dumps(
                 {
@@ -335,8 +491,19 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
             )
         )
 
+        bytes_per_second = 16000 * 2  # PCM16 mono 16k
+        loop = asyncio.get_running_loop()
+        chunk_index = 0
         for i in range(0, len(pcm), chunk_size):
-            await self.send(bytes_data=pcm[i : i + chunk_size])
+            chunk = pcm[i : i + chunk_size]
+            t0 = loop.time()
+            await self.send(bytes_data=chunk)
+            if chunk_index >= prefill_chunks:
+                target = (len(chunk) / bytes_per_second) * pace_factor
+                remain = target - (loop.time() - t0)
+                if remain > 0:
+                    await asyncio.sleep(remain)
+            chunk_index += 1
 
         await self.send(text_data=json.dumps({"type": "tts_end"}))
         logger.warning("[ws] tts stream end")
@@ -369,4 +536,3 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                 acc += src[base + c]
             out[i] = int(acc / channels)
         return out.tobytes()
-

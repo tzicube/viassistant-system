@@ -1,7 +1,6 @@
-// OK - ESP32S3 NO-PSRAM: MIC + OLED + WS + Bluetooth A2DP (MAP140)
-// Receive server: PCM16 mono 16k via BIN chunk -> FIFO -> Bluetooth A2DP
-// Remove I2S speaker output completely.
-// NOTE: No PSRAM => must keep RAM small.
+// OK - ESP32S3 NO-PSRAM: MIC + OLED + WS (Mic Record + Text Only)
+// Server sends audio directly to Bluetooth speaker
+// ESP32: Mic recording + Text via WebSocket only
 
 #include <WiFi.h>
 
@@ -16,11 +15,6 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-
-// ===== Bluetooth A2DP (Classic) =====
-#include "BluetoothA2DPSource.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
 
 // =========================
 // WIFI
@@ -73,16 +67,7 @@ int lastBtnState = HIGH;
 WebSocketsClient ws;
 bool wsConnected = false;
 
-// FIX: avoid name conflict with esp32-hal-bt.h: bool btStarted();
-bool a2dpStarted = false;
-unsigned long a2dpStartAtMs = 0;   // deferred start time
-
 String lastAiText = "";
-
-// track server TTS
-bool ttsStreamActive = false;
-size_t ttsRxBytes = 0;
-size_t ttsRxChunks = 0;
 
 // OLED mode control
 enum OledMode { OLED_FACE, OLED_TEXT, OLED_THINKING, OLED_SERVER_DOWN };
@@ -119,92 +104,6 @@ const int8_t GAZE_8[8][2] = {
   {  0, -7 }, {  5, -5 }, {  9,  0 }, {  5,  5 },
   {  0,  7 }, { -5,  5 }, { -9,  0 }, { -5, -5 }
 };
-
-// =========================
-// Bluetooth A2DP -> MAP140 (stream from FIFO)
-// =========================
-BluetoothA2DPSource a2dp;
-static const char* BT_SPK_NAME = "MAP140";
-static constexpr uint8_t BT_VOL = 90;
-static constexpr int BT_SR = 44100;
-
-// NO-PSRAM => keep FIFO small
-static constexpr size_t BT_FIFO_SAMPLES_DRAM = 3000;  // try 2000 if still unstable
-
-static int16_t* btFifo = nullptr;
-static size_t btFifoSamples = 0;
-static volatile size_t btW = 0;
-static volatile size_t btR = 0;
-static portMUX_TYPE btMux = portMUX_INITIALIZER_UNLOCKED;
-
-static uint32_t rs_acc = 0;  // 16k -> 44.1k accumulator
-
-static inline void btResetFifo() {
-  portENTER_CRITICAL(&btMux);
-  btW = btR = 0;
-  rs_acc = 0;
-  portEXIT_CRITICAL(&btMux);
-}
-
-static inline void btPush_unsafe(int16_t s) {
-  btFifo[btW] = s;
-  btW = (btW + 1) % btFifoSamples;
-  if (btW == btR) btR = (btR + 1) % btFifoSamples;
-}
-
-static inline bool btPop_unsafe(int16_t& s) {
-  if (btR == btW) return false;
-  s = btFifo[btR];
-  btR = (btR + 1) % btFifoSamples;
-  return true;
-}
-
-static void pushPcm16kToBtFifo(const uint8_t* data, size_t len) {
-  if (!btFifo || btFifoSamples == 0 || !data || len < 2) return;
-  len &= ~((size_t)1);
-
-  portENTER_CRITICAL(&btMux);
-  for (size_t i = 0; i < len; i += 2) {
-    int16_t s16 = (int16_t)((uint16_t)data[i] | ((uint16_t)data[i + 1] << 8));
-    rs_acc += (uint32_t)BT_SR;
-    while (rs_acc >= (uint32_t)SAMPLE_RATE) {
-      rs_acc -= (uint32_t)SAMPLE_RATE;
-      btPush_unsafe(s16);
-    }
-  }
-  portEXIT_CRITICAL(&btMux);
-}
-
-// A2DP callback: fill stereo 16-bit interleaved @44100.
-static int32_t a2dp_cb(uint8_t* data, int32_t len) {
-  if (!data || len <= 0 || !btFifo || btFifoSamples == 0) return 0;
-
-  int32_t usable = (len / 4) * 4;
-  int16_t* out = (int16_t*)data;
-  int32_t frames = usable / 4;
-
-  portENTER_CRITICAL(&btMux);
-  for (int32_t f = 0; f < frames; f++) {
-    int16_t s = 0;
-    (void)btPop_unsafe(s);
-    out[f * 2 + 0] = s;
-    out[f * 2 + 1] = s;
-  }
-  portEXIT_CRITICAL(&btMux);
-  return usable;
-}
-
-static void startA2dpIfNeeded() {
-  if (a2dpStarted) return;
-
-  // Important: A2DP eats heap. Start only when WS already stable.
-  a2dp.set_volume(BT_VOL);
-  a2dp.start_raw(BT_SPK_NAME, a2dp_cb);
-  a2dpStarted = true;
-
-  Serial.printf("[bt] A2DP started -> %s vol=%u free_heap=%u\n",
-                BT_SPK_NAME, BT_VOL, (unsigned)ESP.getFreeHeap());
-}
 
 // =========================
 // UTIL
@@ -454,24 +353,10 @@ void setupI2SRx() {
 // =========================
 void handleWsText(const String& body) {
   String aiText;
-  String msgType;
 
   if (oledMode == OLED_THINKING) {
     oledMode = OLED_FACE;
     lastFaceFrameMs = 0;
-  }
-
-  if (extractJsonString(body, "type", msgType)) {
-    if (msgType == "tts_start") {
-      ttsStreamActive = true;
-      ttsRxBytes = 0;
-      ttsRxChunks = 0;
-      btResetFifo();
-      Serial.println("[tts] start");
-    } else if (msgType == "tts_end") {
-      ttsStreamActive = false;
-      Serial.printf("[tts] end chunks=%u bytes=%u\n", (unsigned)ttsRxChunks, (unsigned)ttsRxBytes);
-    }
   }
 
   if (!extractJsonString(body, "ai_text", aiText)) {
@@ -492,11 +377,7 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
   switch (type) {
     case WStype_CONNECTED:
       wsConnected = true;
-      ttsStreamActive = false;
       Serial.printf("[ws] connected -> ws://%s:%d%s\n", WS_HOST, WS_PORT, WS_PATH);
-
-      // defer A2DP start (avoid peak memory right in handshake)
-      if (!a2dpStarted) a2dpStartAtMs = millis() + 1500;
 
       oledMode = OLED_FACE;
       textModeUntilMs = 0;
@@ -506,9 +387,6 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     case WStype_DISCONNECTED:
       wsConnected = false;
       recording = false;
-      ttsStreamActive = false;
-      btResetFifo();
-      a2dpStartAtMs = 0;
 
       if (payload && length) {
         String reason = payloadToString(payload, length);
@@ -525,20 +403,9 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
     }
 
-    case WStype_BIN:
-      if (ttsStreamActive && length > 0) {
-        ttsRxChunks++;
-        ttsRxBytes += length;
-        pushPcm16kToBtFifo(payload, length);
-      }
-      break;
-
     case WStype_ERROR:
       wsConnected = false;
       recording = false;
-      ttsStreamActive = false;
-      btResetFifo();
-      a2dpStartAtMs = 0;
 
       if (payload && length) {
         String err = payloadToString(payload, length);
@@ -586,17 +453,6 @@ void setup() {
   // MIC RX
   setupI2SRx();
 
-  // FIFO DRAM (small)
-  btFifo = (int16_t*)malloc(BT_FIFO_SAMPLES_DRAM * sizeof(int16_t));
-  btFifoSamples = btFifo ? BT_FIFO_SAMPLES_DRAM : 0;
-  Serial.printf("[bt] fifo DRAM=%u samples\n", (unsigned)btFifoSamples);
-  btResetFifo();
-
-  // Free BLE RAM (A2DP uses Classic)
-  esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
-
-  Serial.printf("[bt] deferred start free_heap=%u\n", (unsigned)ESP.getFreeHeap());
-
   // WS
   String wsHeaders = String("Origin: http://") + WS_HOST + ":" + String(WS_PORT);
   ws.setExtraHeaders(wsHeaders.c_str());
@@ -614,12 +470,6 @@ void setup() {
 void loop() {
   unsigned long now = millis();
   ws.loop();
-
-  // Start A2DP later (NO-PSRAM stabilizer)
-  if (wsConnected && !a2dpStarted && a2dpStartAtMs != 0 && (long)(now - a2dpStartAtMs) >= 0) {
-    startA2dpIfNeeded();
-    a2dpStartAtMs = 0;
-  }
 
   if (wsConnected) {
     // Button
@@ -664,9 +514,6 @@ void loop() {
 
   } else {
     recording = false;
-    ttsStreamActive = false;
-    btResetFifo();
-    a2dpStartAtMs = 0;
     if (oledMode != OLED_SERVER_DOWN) setServerUnavailableUi();
     lastBtnState = digitalRead(BTN_PIN);
   }
@@ -694,6 +541,6 @@ void loop() {
     }
   }
 
-  // Let WiFi/BT tasks run
+  // Let WiFi tasks run
   delay(1);
 }
