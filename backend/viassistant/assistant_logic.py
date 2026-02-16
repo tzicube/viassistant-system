@@ -35,7 +35,7 @@ _OFF_PATTERN = re.compile(r"\b(turn off|switch off|disable|close|power off|shut 
 _TEMP_PATTERN = re.compile(r"\b(temperature|temp)\b|nhiet\s*do|bao\s*nhieu\s*do")
 _HUMIDITY_PATTERN = re.compile(r"\b(humidity|humid)\b|do\s*am")
 _ESP_SENSOR_PATHS = ("/dht", "/sensor")
-_MAX_CONVERSATION_TURNS = 5
+_MAX_CONVERSATION_TURNS = 10
 _EMOJI_PATTERN = re.compile("[\U0001F300-\U0001FAFF\U00002700-\U000027BF\U0001F1E6-\U0001F1FF]")
 _MARKDOWN_PATTERN = re.compile(
     r"(```|`|^\s{0,3}#{1,6}\s|^\s*[-*+]\s|^\s*\d+\.\s|\[[^\]]+\]\([^)]+\)|\*\*|__|~~)",
