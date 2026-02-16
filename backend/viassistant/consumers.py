@@ -18,8 +18,8 @@ from typing import Optional
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-from .voice_pipeline import STTConfig, stt_wav_to_text, tts_text_to_wav_bytes
-from .bluetooth_audio import play_tts_audio, init_bluetooth_speaker
+from .voice_pipeline import STTConfig, stt_wav_to_text, tts_text_to_wav_bytes, _ffmpeg_mp3_to_wav_bytes
+from .bluetooth_audio import play_tts_audio, init_bluetooth_speaker, stop_bluetooth_playback
 from .assistant_logic import (
     _call_ai,
     _call_esp_relay,
@@ -28,16 +28,19 @@ from .assistant_logic import (
     _detect_sensor_query,
     _format_device_reply,
     _format_sensor_reply,
+    _detect_music_request,
+    _jamendo_download_audio,
+    _jamendo_search_track,
 )
 
 logger = logging.getLogger("viassistant.ws")
 ESP_INLINE_WAV_MAX_BYTES = int(os.getenv("VI_ESP_INLINE_WAV_MAX_BYTES", "65536"))
-ESP_INLINE_TTS_MAX_CHARS = int(os.getenv("VI_ESP_INLINE_TTS_MAX_CHARS", "120"))
+ESP_INLINE_TTS_MAX_CHARS = int(os.getenv("VI_ESP_INLINE_TTS_MAX_CHARS", "400"))
 ESP_TTS_STREAM_CHUNK_BYTES = int(os.getenv("VI_ESP_TTS_STREAM_CHUNK_BYTES", "480"))
 ESP_TTS_STREAM_PREFILL_CHUNKS = int(os.getenv("VI_ESP_TTS_STREAM_PREFILL_CHUNKS", "10"))
 ESP_TTS_STREAM_PACE_FACTOR = float(os.getenv("VI_ESP_TTS_STREAM_PACE_FACTOR", "1.00"))
 BT_SPEAKER_NAME = os.getenv("VI_BT_SPEAKER_NAME", "MAP140")
-DEBUG_SAVE_TTS = os.getenv("VI_DEBUG_SAVE_TTS", "0") == "1"
+TTS_LEAD_SIL_MS = int(os.getenv("VI_TTS_LEAD_SIL_MS", "0"))
 MAX_CONVERSATION_TURNS = 5
 HISTORY_FILE_PATH = Path(__file__).resolve().parent / "ai_history.json"
 HISTORY_FILE_MAX_ENTRIES = int(os.getenv("VI_HISTORY_FILE_MAX_ENTRIES", "1000"))
@@ -186,17 +189,6 @@ def _shorten_tts_text(text: str, max_chars: int = ESP_INLINE_TTS_MAX_CHARS) -> s
     return clipped
 
 
-def _debug_save_wav(wav_bytes: bytes, label: str):
-    if not DEBUG_SAVE_TTS or not wav_bytes:
-        return
-    try:
-        path = Path(__file__).resolve().parent / f"debug_tts_{label}.wav"
-        path.write_bytes(wav_bytes)
-        logger.warning("[ws] debug saved tts wav -> %s (%d bytes)", path.name, len(wav_bytes))
-    except Exception:
-        logger.exception("[ws] failed saving debug tts wav")
-
-
 def _normalize_wav_header(wav_bytes: bytes) -> bytes:
     """
     Some TTS outputs carry bogus nframes (e.g., 0x7fffffff) causing winsound to fail.
@@ -216,6 +208,26 @@ def _normalize_wav_header(wav_bytes: bytes) -> bytes:
         return fixed if fixed else wav_bytes
     except Exception:
         logger.exception("[ws] normalize wav header failed")
+        return wav_bytes
+
+
+def _add_leading_silence(wav_bytes: bytes, ms: int) -> bytes:
+    """Prepend silence to reduce Bluetooth cut-off of first syllable."""
+    if ms <= 0:
+        return wav_bytes
+    try:
+        with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
+            params = wf.getparams()
+            frames = wf.readframes(wf.getnframes())
+        silence_frames = int(params.framerate * ms / 1000)
+        silence = b"\x00" * silence_frames * params.nchannels * params.sampwidth
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf2:
+            wf2.setparams(params)
+            wf2.writeframes(silence + frames)
+        return buf.getvalue()
+    except Exception:
+        logger.exception("[ws] add leading silence failed")
         return wav_bytes
 
 
@@ -244,9 +256,11 @@ async def _ensure_bt_ready() -> bool:
 class ViAssistantConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self._pcm = bytearray()
+        self._prebuf = bytearray()  # capture early audio before "start" processed
         self._started = False
         self._language = "en"
         self._client = "generic"
+        self._finalize_task: asyncio.Task | None = None
         self._history = deque(
             _load_recent_turns(MAX_CONVERSATION_TURNS),
             maxlen=MAX_CONVERSATION_TURNS,
@@ -263,9 +277,16 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                 return
 
             t = (msg.get("type") or "").strip().lower()
+            logger.warning("[ws] receive text_data type=%s json=%s", t, text_data[:100])
             if t == "start":
-                self._pcm.clear()
+                if self._prebuf:
+                    # keep early audio that may have arrived before start frame
+                    self._pcm = bytearray(self._prebuf)
+                else:
+                    self._pcm.clear()
+                self._prebuf.clear()
                 self._started = True
+                self._cancel_token = False
                 self._language = (msg.get("language") or "en").strip() or "en"
                 self._client = (msg.get("client") or "generic").strip().lower() or "generic"
                 logger.warning("[ws] start language=%s", self._language)
@@ -274,7 +295,10 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
 
             if t == "stop":
                 logger.warning("[ws] stop (pcm=%d bytes)", len(self._pcm))
-                await self._finalize_and_reply()
+                # run finalize in background
+                if self._finalize_task and not self._finalize_task.done():
+                    self._finalize_task.cancel()
+                self._finalize_task = asyncio.create_task(self._finalize_and_reply())
                 return
 
             await self.send(text_data=json.dumps({"type": "error", "error": "unknown_type"}))
@@ -282,10 +306,28 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
 
         if bytes_data:
             if not self._started:
+                # buffer until we receive a start frame to avoid clipping the first syllable
+                self._prebuf.extend(bytes_data)
                 return
             self._pcm.extend(bytes_data)
 
     async def _finalize_and_reply(self):
+        try:
+            await self._do_finalize_and_reply()
+        except asyncio.CancelledError:
+            logger.warning("[ws] finalize cancelled")
+            await stop_bluetooth_playback()
+        except Exception:
+            logger.exception("[ws] finalize failed")
+        finally:
+            self._pcm.clear()
+            self._prebuf.clear()
+            self._started = False
+            self._finalize_task = None
+
+    async def _do_finalize_and_reply(self):
+        if not self._pcm and self._prebuf:
+            self._pcm = bytearray(self._prebuf)
         if not self._pcm:
             await self.send(text_data=json.dumps({"type": "result", "ok": False, "error": "empty_audio"}))
             return
@@ -305,9 +347,12 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
 
         device_action = _detect_device_command(stt_text)
         sensor_query = _detect_sensor_query(stt_text)
+        music_query = _detect_music_request(stt_text)
         device_target = None
         device_result = None
         sensor_result = None
+        music_result = None
+        music_audio_bytes: bytes | None = None
         if device_action:
             device_target = device_action.get("rooms") or device_action.get("room")
             try:
@@ -336,11 +381,43 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                 sensor_query["humidity"],
             )
             logger.warning("[ws] sensor query=%s", sensor_query)
+        elif music_query:
+            reply_source = "music"
+            try:
+                music_result = await asyncio.to_thread(_jamendo_search_track, music_query)
+            except Exception as e:
+                logger.exception("[ws] jamendo search failed: %s", e)
+                music_result = {"ok": False, "error": str(e)}
+
+            if music_result and music_result.get("ok") and music_result.get("audio_url"):
+                try:
+                    mp3_bytes = await asyncio.to_thread(_jamendo_download_audio, music_result["audio_url"])
+                    music_audio_bytes = await asyncio.to_thread(_ffmpeg_mp3_to_wav_bytes, mp3_bytes)
+                    logger.warning(
+                        "[ws] jamendo audio ok id=%s title=%s bytes=%d",
+                        music_result.get("id"),
+                        music_result.get("title"),
+                        len(music_audio_bytes or b""),
+                    )
+                    if not music_audio_bytes:
+                        music_result = {"ok": False, "error": "empty_audio_bytes"}
+                except Exception as e:
+                    logger.exception("[ws] jamendo audio fetch failed: %s", e)
+                    music_result = {"ok": False, "error": f"audio_download_failed: {e}"}
+
+            if music_result and music_result.get("ok"):
+                title = music_result.get("title") or "music"
+                artist = music_result.get("artist") or "Unknown artist"
+                ai_text = f"Playing {title} by {artist} on Jamendo."
+            else:
+                ai_text = f"Sorry, I could not find music for \"{music_query}\" right now."
         else:
             ai_text = await asyncio.to_thread(_call_ai, stt_text, history_snapshot)
 
         user_text = (stt_text or "").strip()
         assistant_text = (ai_text or "").strip()
+        if assistant_text:
+            logger.info("[ws] ai_text: %s", assistant_text)
         if user_text and assistant_text:
             self._history.append({"user": user_text, "assistant": assistant_text})
             try:
@@ -356,97 +433,128 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
             )
         logger.warning("[ws] reply done source=%s text_len=%d", reply_source, len(ai_text or ""))
 
-        if self._client == "esp32":
-            esp_tts_text = _shorten_tts_text(ai_text, ESP_INLINE_TTS_MAX_CHARS)
-            if esp_tts_text != (ai_text or "").strip():
-                logger.warning(
-                    "[ws] esp tts shortened chars=%d->%d",
-                    len((ai_text or "").strip()),
-                    len(esp_tts_text),
-                )
+        result_payload = {
+            "type": "result",
+            "ok": True,
+            "stt_text": stt_text,
+            "ai_text": ai_text,
+            "device_action": device_action,
+            "device_result": device_result,
+            "sensor_query": sensor_query,
+            "sensor_result": sensor_result,
+            "music_query": music_query,
+            "music_result": music_result,
+        }
 
-            tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, esp_tts_text) if esp_tts_text else b""
-            tts_bytes = _normalize_wav_header(tts_raw)
-            _debug_save_wav(tts_bytes, "esp")
-            
-            # Play audio on Bluetooth speaker (MAP140)
+        tts_bytes = b""
+        if self._client == "esp32":
+            if music_audio_bytes:
+                tts_bytes = _add_leading_silence(_normalize_wav_header(music_audio_bytes), TTS_LEAD_SIL_MS)
+            else:
+                esp_tts_text = _shorten_tts_text(ai_text, ESP_INLINE_TTS_MAX_CHARS)
+                if esp_tts_text != (ai_text or "").strip():
+                    logger.warning(
+                        "[ws] esp tts shortened chars=%d->%d",
+                        len((ai_text or "").strip()),
+                        len(esp_tts_text),
+                    )
+
+                filler = os.getenv("VI_TTS_FILLER", "hellooooo")
+                esp_tts_full = f"{filler} {esp_tts_text}".strip() if esp_tts_text else ""
+                tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, esp_tts_full) if esp_tts_full else b""
+                tts_bytes = _add_leading_silence(_normalize_wav_header(tts_raw), TTS_LEAD_SIL_MS)
+
+            payload = dict(result_payload)
+            payload.update(
+                {
+                    "audio_stream": True,
+                    "audio_format": "pcm_s16le",
+                    "sample_rate": 16000,
+                    "channels": 1,
+                }
+            )
+            await self.send(text_data=json.dumps(payload))
+
             if tts_bytes:
                 try:
                     bt_ok = await _ensure_bt_ready()
-                    if bt_ok:
-                        logger.info("[ws] streaming TTS audio to Bluetooth speaker")
-                        played = await play_tts_audio(tts_bytes)
-                        if not played:
+                    if bt_ok and not self._cancel_token:
+                        logger.info("[ws] streaming audio to Bluetooth speaker (cancel_token=%s)", self._cancel_token)
+                        played = await self._play_with_cancel_check(tts_bytes)
+                        if not played and not self._cancel_token:
                             logger.warning("[ws] Bluetooth audio playback reported failure, fallback local")
                             await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
-                    else:
+                    elif not bt_ok:
                         logger.warning("[ws] Bluetooth init failed, skip playback")
+                    elif self._cancel_token:
+                        logger.warning("[ws] playback cancelled by user (stop_audio)")
+                        await stop_bluetooth_playback()
                 except Exception as e:
                     logger.warning("[ws] Bluetooth audio playback failed: %s", e)
                     await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
-            
-            await self.send(
-                text_data=json.dumps(
-                    {
-                        "type": "result",
-                        "ok": True,
-                        "stt_text": stt_text,
-                        "ai_text": ai_text,
-                        "device_action": device_action,
-                        "device_result": device_result,
-                        "sensor_query": sensor_query,
-                        "sensor_result": sensor_result,
-                        "audio_stream": True,
-                        "audio_format": "pcm_s16le",
-                        "sample_rate": 16000,
-                        "channels": 1,
-                    }
-                )
-            )
-            await self._send_tts_pcm_chunks(tts_bytes)
+
+                await self._send_tts_pcm_chunks(tts_bytes)
         else:
-            tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, ai_text)
-            tts_bytes = _normalize_wav_header(tts_raw)
-            logger.warning("[ws] tts done bytes=%d", len(tts_bytes or b""))
-            _debug_save_wav(tts_bytes, "server")
+            if music_audio_bytes:
+                tts_bytes = _add_leading_silence(_normalize_wav_header(music_audio_bytes), TTS_LEAD_SIL_MS)
+                logger.warning("[ws] music audio bytes=%d", len(tts_bytes or b""))
+            else:
+                filler = os.getenv("VI_TTS_FILLER", "hello")
+                tts_full = f"{filler} {ai_text}".strip() if ai_text else ""
+                tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, tts_full)
+                tts_bytes = _add_leading_silence(_normalize_wav_header(tts_raw), TTS_LEAD_SIL_MS)
+                logger.warning("[ws] tts done bytes=%d", len(tts_bytes or b""))
             
-            # Play audio on Bluetooth speaker (MAP140)
             if tts_bytes:
                 try:
                     bt_ok = await _ensure_bt_ready()
-                    if bt_ok:
-                        logger.info("[ws] streaming TTS audio to Bluetooth speaker")
-                        played = await play_tts_audio(tts_bytes)
-                        if not played:
+                    if bt_ok and not self._cancel_token:
+                        logger.info("[ws] streaming audio to Bluetooth speaker (client=%s cancel_token=%s)", self._client, self._cancel_token)
+                        played = await self._play_with_cancel_check(tts_bytes)
+                        if not played and not self._cancel_token:
                             logger.warning("[ws] Bluetooth audio playback reported failure, fallback local")
                             await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
-                    else:
+                    elif not bt_ok:
                         logger.warning("[ws] Bluetooth init failed, skip playback")
+                    elif self._cancel_token:
+                        logger.warning("[ws] playback cancelled by user (stop_audio)")
+                        await stop_bluetooth_playback()
                 except Exception as e:
                     logger.warning("[ws] Bluetooth audio playback failed: %s", e)
                     await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
             
             audio_b64 = base64.b64encode(tts_bytes).decode("ascii") if tts_bytes else ""
-            await self.send(
-                text_data=json.dumps(
-                    {
-                        "type": "result",
-                        "ok": True,
-                        "stt_text": stt_text,
-                        "ai_text": ai_text,
-                        "device_action": device_action,
-                        "device_result": device_result,
-                        "sensor_query": sensor_query,
-                        "sensor_result": sensor_result,
-                        "audio_b64": audio_b64,
-                        "audio_mime": "audio/wav",
-                    }
-                )
-            )
+            payload = dict(result_payload)
+            payload.update({"audio_b64": audio_b64, "audio_mime": "audio/wav"})
+            await self.send(text_data=json.dumps(payload))
 
         # reset
         self._pcm.clear()
+        self._prebuf.clear()
         self._started = False
+
+    async def _play_with_cancel_check(self, wav_bytes: bytes) -> bool:
+        """Play TTS audio while checking cancel token"""
+        logger.info("[ws] play_with_cancel_check cancel_token=%s", self._cancel_token)
+        if self._cancel_token:
+            logger.warning("[ws] cancel_token already set, skipping playback")
+            return False
+        
+        try:
+            played = await play_tts_audio(wav_bytes)
+            # Check if cancelled after playback
+            if self._cancel_token:
+                logger.warning("[ws] cancel_token set during/after playback, stopping immediately")
+                await stop_bluetooth_playback()
+                return False
+            return played
+        except asyncio.CancelledError:
+            logger.warning("[ws] playback task cancelled")
+            await stop_bluetooth_playback()
+            return False
+        except Exception as e:
+            logger.error("[ws] play_with_cancel_check error: %s", e)
+            return False
 
     async def _send_tts_pcm_chunks(self, wav_bytes: bytes):
         if not wav_bytes:
@@ -495,6 +603,9 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
         loop = asyncio.get_running_loop()
         chunk_index = 0
         for i in range(0, len(pcm), chunk_size):
+            if self._cancel_token:
+                logger.warning("[ws] tts stream cancelled mid-stream")
+                break
             chunk = pcm[i : i + chunk_size]
             t0 = loop.time()
             await self.send(bytes_data=chunk)

@@ -21,6 +21,7 @@ class BluetoothAudioPlayer:
         self.speaker_name = speaker_name
         self.is_connected = False
         self.system = platform.system()  # "Linux", "Windows", "Darwin"
+        self._current_proc: Optional[subprocess.Popen] = None
 
     async def connect(self) -> bool:
         """Connect to Bluetooth speaker"""
@@ -141,11 +142,29 @@ class BluetoothAudioPlayer:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            stdout, stderr = await asyncio.to_thread(
-                proc.communicate, wav_bytes, timeout=30
-            )
-            logger.info("[bt] audio played via paplay")
-            return True
+            self._current_proc = proc
+            try:
+                # Stream data in chunks to allow interruption
+                chunk_size = 4096
+                for i in range(0, len(wav_bytes), chunk_size):
+                    chunk = wav_bytes[i:i+chunk_size]
+                    proc.stdin.write(chunk)
+                    proc.stdin.flush()
+                    # Check if process died
+                    if proc.poll() is not None:
+                        break
+                    # Allow other tasks to run
+                    await asyncio.sleep(0.001)
+                
+                proc.stdin.close()
+                # Wait for process to finish with timeout
+                await asyncio.wait_for(asyncio.to_thread(proc.wait), timeout=5.0)
+                logger.info("[bt] audio played via paplay")
+                return True
+            finally:
+                self._current_proc = None
+                if proc.poll() is None:
+                    proc.terminate()
         except FileNotFoundError:
             # Fallback to ffplay
             try:
@@ -155,15 +174,42 @@ class BluetoothAudioPlayer:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
-                stdout, stderr = await asyncio.to_thread(
-                    proc.communicate, wav_bytes, timeout=30
-                )
-                logger.info("[bt] audio played via ffplay")
-                return True
+                self._current_proc = proc
+                try:
+                    # Stream data in chunks to allow interruption
+                    chunk_size = 4096
+                    for i in range(0, len(wav_bytes), chunk_size):
+                        chunk = wav_bytes[i:i+chunk_size]
+                        proc.stdin.write(chunk)
+                        proc.stdin.flush()
+                        # Check if process died
+                        if proc.poll() is not None:
+                            break
+                        # Allow other tasks to run
+                        await asyncio.sleep(0.001)
+                    
+                    proc.stdin.close()
+                    # Wait for process to finish with timeout
+                    await asyncio.wait_for(asyncio.to_thread(proc.wait), timeout=5.0)
+                    logger.info("[bt] audio played via ffplay")
+                    return True
+                finally:
+                    self._current_proc = None
+                    if proc.poll() is None:
+                        proc.terminate()
             except FileNotFoundError:
                 logger.error("[bt] no audio player found (install ffmpeg or pulseaudio)")
                 return False
+        except asyncio.TimeoutError:
+            logger.warning("[bt] playback timeout")
+            self._current_proc = None
+            if proc.poll() is None:
+                proc.terminate()
+            return False
         except Exception as e:
+            self._current_proc = None
+            if proc and proc.poll() is None:
+                proc.terminate()
             logger.error("[bt] playback error: %s", e)
             return False
 
@@ -208,16 +254,73 @@ class BluetoothAudioPlayer:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            stdout, stderr = await asyncio.to_thread(
-                proc.communicate, wav_bytes, timeout=30
-            )
-            logger.info("[bt] audio played via afplay")
-            return True
+            self._current_proc = proc
+            try:
+                # Stream data in chunks to allow interruption
+                chunk_size = 4096
+                for i in range(0, len(wav_bytes), chunk_size):
+                    chunk = wav_bytes[i:i+chunk_size]
+                    proc.stdin.write(chunk)
+                    proc.stdin.flush()
+                    # Check if process died
+                    if proc.poll() is not None:
+                        break
+                    # Allow other tasks to run
+                    await asyncio.sleep(0.001)
+                
+                proc.stdin.close()
+                # Wait for process to finish with timeout
+                await asyncio.wait_for(asyncio.to_thread(proc.wait), timeout=5.0)
+                logger.info("[bt] audio played via afplay")
+                return True
+            finally:
+                self._current_proc = None
+                if proc.poll() is None:
+                    proc.terminate()
         except FileNotFoundError:
             logger.error("[bt] afplay not found")
             return False
+        except asyncio.TimeoutError:
+            logger.warning("[bt] playback timeout")
+            self._current_proc = None
+            if proc.poll() is None:
+                proc.terminate()
+            return False
         except Exception as e:
+            self._current_proc = None
+            if proc and proc.poll() is None:
+                proc.terminate()
             logger.error("[bt] playback error: %s", e)
+            return False
+
+    async def stop_playback(self) -> bool:
+        """Best-effort stop of any in-progress playback."""
+        try:
+            if self.system == "Windows":
+                try:
+                    import winsound
+                    winsound.PlaySound(None, winsound.SND_PURGE)
+                except Exception:
+                    pass
+
+            proc = self._current_proc
+            if proc and proc.poll() is None:
+                logger.warning("[bt] stop_playback: terminating audio process...")
+                proc.terminate()
+                try:
+                    await asyncio.to_thread(proc.wait, 1)
+                except Exception:
+                    pass
+                if proc.poll() is None:
+                    logger.warning("[bt] stop_playback: killing audio process!")
+                    proc.kill()
+                logger.warning("[bt] stop_playback: process stopped.")
+            else:
+                logger.warning("[bt] stop_playback: no active process.")
+            self._current_proc = None
+            return True
+        except Exception as e:
+            logger.error("[bt] stop playback failed: %s", e)
             return False
 
     async def disconnect(self):
@@ -252,6 +355,18 @@ async def play_tts_audio(wav_bytes: bytes) -> bool:
         logger.warning("[bt] player not initialized")
         return False
     return await _bt_player.play_wav_bytes(wav_bytes)
+
+
+async def stop_bluetooth_playback() -> bool:
+    """Stop current Bluetooth playback if any (best effort)."""
+    global _bt_player
+    if not _bt_player:
+        return False
+    try:
+        return await _bt_player.stop_playback()
+    except Exception:
+        logger.exception("[bt] stop playback failed")
+        return False
 
 
 async def shutdown_bluetooth():

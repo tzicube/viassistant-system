@@ -1,3 +1,4 @@
+
 // OK - ESP32S3 NO-PSRAM: MIC + OLED + WS (Mic Record + Text Only)
 // Server sends audio directly to Bluetooth speaker
 // ESP32: Mic recording + Text via WebSocket only
@@ -38,7 +39,7 @@ const int I2S_WS   = 25;
 const int I2S_DIN  = 34;
 
 // BUTTON
-const int BTN_PIN = 14;
+const int BTN_PIN = 14;        // Record/Stop toggle
 
 // OLED (SSD1306)
 const int OLED_SDA = 21;
@@ -472,7 +473,7 @@ void loop() {
   ws.loop();
 
   if (wsConnected) {
-    // Button
+    // Button - Record Toggle
     int btn = digitalRead(BTN_PIN);
     if (lastBtnState == HIGH && btn == LOW && (now - lastBtnMs) > DEBOUNCE_MS) {
       lastBtnMs = now;
