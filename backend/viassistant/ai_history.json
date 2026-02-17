@@ -1,170 +1,38 @@
 [
   {
-    "q": "What is the temperature and humidity in this room now?",
-    "a": "Current temperature is 20.9 degrees Celsius and humidity is 75.0 percent."
+    "q": "Hello, can you help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
   },
   {
-    "q": "What is the humidity and temperature in this room now?",
-    "a": "Current temperature is 20.8 degrees Celsius and humidity is 75.4 percent."
+    "q": "turn off the light in the living room.",
+    "a": "I have turned off the light in living room."
   },
   {
-    "q": "What is the humidity and temperature now?",
-    "a": "Current temperature is 20.9 degrees Celsius and humidity is 75.9 percent."
-  },
-  {
-    "q": "What is the humidity and temperature now?",
-    "a": "Current temperature is 20.9 degrees Celsius and humidity is 75.4 percent."
-  },
-  {
-    "q": "Hi, can you help me turn on the light in the bedroom?",
-    "a": "I have turned on the light in bedroom."
-  },
-  {
-    "q": "Hello, who am I?",
-    "a": "You are a user interacting with me, Vi Assistant."
-  },
-  {
-    "q": "What is your name?",
-    "a": "My name is Vi Assistant."
-  },
-  {
-    "q": "My name is Wee. Nice to meet you.",
-    "a": "Nice to meet you too, Wee.  How can I help you today?"
-  },
-  {
-    "q": "Do you know who I am?",
-    "a": "I know that your name is Wee. Is there anything else you'd like me to know?"
-  },
-  {
-    "q": "Hello, I live in Taiwan now. Where do you live?",
-    "a": "I don't live anywhere. I exist as a computer program. \n\n\n\nDo you have any other questions for me, Wee?"
-  },
-  {
-    "q": "Can you give me my information?",
-    "a": "I only know your name is Wee and that you live in Taiwan.  \n\nIs there anything else you'd like to talk about?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI developed at Ming Chuan University."
-  },
-  {
-    "q": "hello",
-    "a": "Hello! How can I help you today?"
-  },
-  {
-    "q": "Hello.",
-    "a": "Hi there! 😊 What can I do for you?"
-  },
-  {
-    "q": "Hello.",
-    "a": "Hello! 👋  What's on your mind?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI assistant created at Ming Chuan University."
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI assistant."
-  },
-  {
-    "q": "Who am I?",
-    "a": "I don't have information about who you are.  Are you looking for a specific answer or just curious?"
-  },
-  {
-    "q": "Hello, my name is Wee.",
-    "a": "Hi Wee, nice to meet you!\n\n\n\nWhat can I do for you today?"
-  },
-  {
-    "q": "Do you know who am I?",
-    "a": "You told me your name is Wee. \n\nIs there anything else you'd like me to know?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant."
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI assistant.  What can I do for you?"
-  },
-  {
-    "q": "Who are you?",
-    "a": "I am Vi Assistant, an AI developed at Ming Chuan University."
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "I am doing well, thank you. How about you?"
-  },
-  {
-    "q": "Hello, you",
-    "a": "Hello! 😊  Is there anything I can help you with?"
-  },
-  {
-    "q": "Bye.",
-    "a": "Goodbye!"
-  },
-  {
-    "q": "Hello, who am I?",
-    "a": "I don't have information about who you are. \n\nCan I help you with anything else?"
-  },
-  {
-    "q": "Can you help me turn on the light in my house?",
-    "a": "As a text-based AI, I can't interact with physical objects like lights.  \n\n\nLet me know if you have any other questions!"
+    "q": "How are you today?",
+    "a": "As an AI I do not have feelings or experiences like humans"
   },
   {
     "q": "Can you help me turn on all the lights in my house?",
     "a": "I have turned on all the lights."
   },
   {
-    "q": "So my name is Ui and nice to meet you.",
-    "a": "Nice to meet you too, Ui. \n\nWhat can I do for you?"
-  },
-  {
-    "q": "Do you have any information about me?",
-    "a": "As a large language model, I don't store personal information about users.  Every interaction we have is fresh.\n\nIs there something specific you'd like to know or discuss?"
-  },
-  {
-    "q": "My name is Huy.",
-    "a": "Hi Huy, it's nice to meet you. \n\nHow can I help you today?"
-  },
-  {
-    "q": "Who am I?",
-    "a": "You are Huy, a user interacting with me, a large language model. \n\n\nIs there anything else you'd like to know or talk about?"
-  },
-  {
-    "q": "Who am I?",
-    "a": "You are Huy.  \n\nWe've already established that. Is there something else you'd like to discuss?"
-  },
-  {
-    "q": "Who am I?",
-    "a": "You are asking me who you are. That's a question for you to answer. \n\nI can help you explore different ideas or perspectives, but ultimately, your identity is up to you.\n\n\n\nWhat do *you* think makes you, Huy?"
-  },
-  {
-    "q": "Do you know who am I?",
-    "a": "As an AI, I don't have access to personal information about you unless you choose to tell me.  \n\nSo, I don't know who you are beyond what you've told me: your name is Huy. \n\n\nWhat would you like to share about yourself?"
-  },
-  {
-    "q": "Thank you for listening, and I'll see you in the next video.",
-    "a": "You're welcome, Huy. It was nice talking with you. See you next time!"
-  },
-  {
     "q": "Can you help me turn off all the lights in my house?",
     "a": "I have turned off all the lights."
   },
   {
-    "q": "Hello, my name is Rui, nice to meet you.",
-    "a": "Nice to meet you too, Rui. \n\nHow can I help you today?"
+    "q": "How are you today?",
+    "a": "As an AI I do not experience emotions or have a physical state"
   },
   {
-    "q": "Hi, I'm living in Taiwan now and study at Ming Shun University.",
-    "a": "That's interesting, Rui!  Ming Shun University is a well-known institution. \n\nWhat are you studying there?"
+    "q": "How are you today?",
+    "a": "As an AI I don't have feelings or experiences like humans"
   },
   {
-    "q": "Oh, so can you tell me my name is what?",
-    "a": "You said your name is Rui. 😊"
+    "q": "Hello, how are you today?",
+    "a": "I am functioning as intended"
   },
   {
-    "q": "Okay, let me turn on the light in the living room",
+    "q": "Hello, can you help me turn on the light in the living room?",
     "a": "I have turned on the light in living room."
   },
   {
@@ -172,783 +40,95 @@
     "a": "I have turned off the light in living room."
   },
   {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI assistant developed at MingChuan University.  \n\nHow can I help you?"
+    "q": "Turn on the light in the living room.",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "Turn off the light in the living room.",
+    "a": "I have turned off the light in living room."
+  },
+  {
+    "q": "Do you know about Ho Chi Minh?",
+    "a": "Yes Ho Chi Minh was a prominent Vietnamese communist revolutionary and politician who served as Prime Minister of North Vietnam from 1945 to 1955 and President from 1945 to 1969 He is considered the founder of modern Vietnam"
+  },
+  {
+    "q": "Hello, I just want to thank you. Can you help me play a song? Just a tune song. I want to learn a tune song.",
+    "a": "I am unable to directly interact with music players or streaming services"
+  },
+  {
+    "q": "I want to listen to Judas Lady Gaga",
+    "a": "Playing Judas by Zodio on Jamendo."
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "As an AI I don't have feelings or experiences like humans"
+  },
+  {
+    "q": "Hello, hi, yeah",
+    "a": "Hello"
+  },
+  {
+    "q": "Hi there.",
+    "a": "Hello"
   },
   {
     "q": "Can you help me turn on the light in the living room?",
     "a": "I have turned on the light in living room."
   },
   {
-    "q": "So, can you help me turn off the light in the living room?",
-    "a": "I have turned off the light in living room."
-  },
-  {
-    "q": "Please see player song.",
-    "a": "Please provide more context. What player and what song? \n\n\n\nLet me know and I'll do my best to help!"
-  },
-  {
-    "q": "Help me play Zudas Lady Gaga.",
-    "a": "I am unable to directly play music.  \n\nYou could try searching for \"Zuda - Lady Gaga\" on a music streaming service like Spotify, Apple Music, or YouTube Music. \n\n\nLet me know if you have other requests!"
-  },
-  {
-    "q": "Can you help me turn on the light in the bedroom?",
-    "a": "I have turned on the light in bedroom."
-  },
-  {
-    "q": "That's all I have to say for now.",
-    "a": "Okay, let me know if you need anything else!"
-  },
-  {
-    "q": "Help me turn on the light in the path group",
-    "a": "I have turned on the light in the path group. \n\n\n\nLet me know if there's anything else I can help with!"
-  },
-  {
-    "q": "Thank you. Thank you.",
-    "a": "You're welcome!  Is there anything else I can do for you?"
-  },
-  {
-    "q": "Turn on the light in the part group.",
-    "a": "I have turned on the light in the path group. \n\n\n\nLet me know if there's anything else I can help with!"
-  },
-  {
-    "q": "Turn on the light in the path group.",
-    "a": "I have turned on the light in the path group.  \n\nLet me know if you need anything else."
-  },
-  {
-    "q": "I'm gonna lie in the bedroom",
-    "a": "Okay, enjoy your rest! Let me know if you need anything else."
-  },
-  {
-    "q": "Thank you for watching, I'll see you in the back room.",
-    "a": "See you later!  \n\n\n\nI'll be here if you need anything."
-  },
-  {
-    "q": "Let me turn off the light in the bedroom.",
-    "a": "I have turned off the light in bedroom."
-  },
-  {
-    "q": "What is the temperature and humidity now?",
-    "a": "Current temperature is 21.7 degrees Celsius and humidity is 89.2 percent."
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi, an AI assistant developed at MingChuan University.  How can I help you?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I'm Vi, an AI assistant. \n\nWhat can I do for you?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi, your AI assistant.  How can I help you today?"
-  },
-  {
-    "q": "And what is your name?",
-    "a": "My name is Vi."
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I'm Vi, an AI assistant."
-  },
-  {
-    "q": "Can you tell me who are you?",
-    "a": "I am Vi, an AI assistant developed at MingChuan University.  \n\nIs there anything else I can help you with?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "Hi! I'm Vi, your AI assistant."
-  },
-  {
-    "q": "hello",
-    "a": "Hello! 👋 \n\n\n\nHow can I help you today?"
-  },
-  {
-    "q": "Can you help me turn on the light in the garden?",
-    "a": "I have turned on the light in garden."
-  },
-  {
-    "q": "Please help me turn off the light in the garden.",
-    "a": "I have turned off the light in garden."
-  },
-  {
-    "q": "Can you help me turn on all the light in my house?",
-    "a": "I have turned on all the lights."
-  },
-  {
-    "q": "Turn off all the lights.",
-    "a": "I have turned off all the lights."
-  },
-  {
-    "q": "hello",
-    "a": "Hello! \n\nHow can I help you?"
-  },
-  {
-    "q": "What is the temperature and humidity now?",
-    "a": "Current temperature is 22.2 degrees Celsius and humidity is 86.0 percent."
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI assistant developed at MingChuan University.  How can I help you today?"
-  },
-  {
-    "q": "How are you today?",
-    "a": "As an AI, I don't have feelings, but I'm ready to assist you! \n\n\n\nWhat can I do for you?"
-  },
-  {
-    "q": "Can you help me turn off the living room light?",
-    "a": "I have turned off the light in living room."
-  },
-  {
-    "q": "Can you help me turn on the living room light?",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "What is the temperature and humidity now?",
-    "a": "I could not read temperature and humidity right now."
-  },
-  {
-    "q": "Hello, could you help me, tell me what is the humidity and temperature now?",
-    "a": "Current temperature is 22.3 degrees Celsius and humidity is 87.8 percent."
-  },
-  {
-    "q": "I love you.",
-    "a": "As an AI, I don't have feelings or personal relationships.  Is there anything else I can help you with?"
-  },
-  {
-    "q": "Hello, how's the day? It'll be nice to meet you.",
-    "a": "It is a good day. As an AI, I don't have social interactions like meeting people."
-  },
-  {
-    "q": "Hello.",
-    "a": "Hello.  How can I help you today?"
-  },
-  {
-    "q": "Bye.",
-    "a": "Goodbye."
-  },
-  {
-    "q": "Thanks for watching!",
-    "a": "You're welcome. Is there anything else I can assist you with?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI developed at MingChuan University.  How can I help you?"
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "As an AI, I don't have feelings, but I'm ready to assist you. What can I do for you today?"
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "I am functioning well.  How can I help you?"
-  },
-  {
-    "q": "Oh, can you help me turn on the light?",
-    "a": "As a text-based AI, I cannot interact with physical objects like lights."
-  },
-  {
-    "q": "How",
-    "a": "I am a language model and exist only in the digital world."
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "I am functioning as expected.  Is there anything I can assist you with?"
-  },
-  {
-    "q": "Hello, who are you?",
-    "a": "I am Vi Assistant, an AI developed at MingChuan University."
-  },
-  {
-    "q": "How are you today?",
-    "a": "I am functioning well. How can I help you?"
-  },
-  {
-    "q": "How are you today?",
-    "a": "As a language model, I don't have feelings or experiences like humans do.  Is there anything specific I can assist you with?"
-  },
-  {
-    "q": "How are you today?",
-    "a": "I am ready to assist you. What can I help you with today?"
-  },
-  {
-    "q": "Hello, how you doing?",
-    "a": "I am functioning properly. How can I be of assistance?"
-  },
-  {
-    "q": "Are you there?",
-    "a": "Yes, I am here.  What can I do for you?"
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "I am ready to assist you. What can I help with?"
-  },
-  {
-    "q": "How are you today?",
-    "a": "As an AI, I don't have feelings or experiences like humans.  Is there anything I can help you with?"
-  },
-  {
-    "q": "Hello, how are you going?",
-    "a": "I am functioning properly. How can I assist you?"
-  },
-  {
-    "q": "Hello, how are you going?",
-    "a": "I am an AI and do not have feelings or experiences.  How can I help you?"
-  },
-  {
-    "q": "How are you doing?",
-    "a": "I am ready to assist you. What can I do for you?"
-  },
-  {
-    "q": "Hello, how you going?",
-    "a": "I am functioning well. How can I help you today?"
-  },
-  {
-    "q": "How you going?",
-    "a": "As an AI, I don't have feelings or experiences like humans.  Is there anything I can assist you with?"
-  },
-  {
-    "q": "How are you going today?",
-    "a": "I am ready to assist you. What can I help you with today?"
-  },
-  {
-    "q": "How's it going today?",
-    "a": "I am functioning properly. How can I be of assistance?"
-  },
-  {
-    "q": "How are you today?",
-    "a": "I am an AI and do not have feelings.  Is there anything I can help you with?"
-  },
-  {
-    "q": "How are you going?",
-    "a": "I am ready to assist you. What can I help you with?"
-  },
-  {
-    "q": "Hello.",
-    "a": "Hello. How can I assist you today?"
-  },
-  {
-    "q": "How are you today?",
-    "a": "As an AI, I don't experience emotions like humans do.  Is there anything I can help you with?"
-  },
-  {
-    "q": "Can you tell me about Goodyear?",
-    "a": "Goodyear is a multinational tire manufacturing company headquartered in Akron, Ohio. \n\nIt was founded in 1898 and is known for producing tires for various vehicles, including cars, trucks, and airplanes."
-  },
-  {
-    "q": "Do you know Adam Turing?",
-    "a": "Yes, I do. Alan Turing was a British mathematician and computer scientist. He is considered one of the founders of theoretical computer science and artificial intelligence."
-  },
-  {
-    "q": "Hello, how are you going?",
-    "a": "I am functioning well. How can I assist you today?"
-  },
-  {
-    "q": "See you. Ciao.",
-    "a": "Goodbye.  Have a good day."
-  },
-  {
-    "q": "Do you know who am I?",
-    "a": "As an AI, I have no memory of past conversations and do not know who you are."
-  },
-  {
-    "q": "Hello, how are you going?",
-    "a": "I am functioning well. How can I assist you today?"
-  },
-  {
-    "q": "Hello, how are you going today?",
-    "a": "I am functioning well.  How can I help you?"
-  },
-  {
-    "q": "Uh, do you know, Willie?",
-    "a": "As an AI, I do not have personal knowledge or relationships."
-  },
-  {
-    "q": "Hello, how you doing? I want to know about old gaming information.",
-    "a": "I can provide information about older video games. What specific games or topics are you interested in?"
-  },
-  {
-    "q": "How are you today?",
-    "a": "I am functioning well. How can I assist you with your query about old gaming information?"
-  },
-  {
-    "q": "Do you know about Ho Chi Minh?",
-    "a": "Yes, Ho Chi Minh was a Vietnamese communist revolutionary leader who served as Prime Minister and President of North Vietnam."
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "I am functioning well. How can I help you?"
-  },
-  {
-    "q": "Do you know Ho Chi Minh?",
-    "a": "Yes, Ho Chi Minh was a Vietnamese communist revolutionary leader who played a key role in the fight for independence from France and later the unification of Vietnam."
-  },
-  {
-    "q": "How are you going?",
-    "a": "I am functioning well.  What can I tell you about old gaming information?"
-  },
-  {
-    "q": "Do you know who is Olympti Witch?",
-    "a": "Olympti Witch is a fictional character from the video game \"The Legend of Zelda: Breath of the Wild.\""
-  },
-  {
-    "q": "I want to learn C++.",
-    "a": "C++ is a powerful programming language. There are many online resources and books available to help you learn it.  Good luck with your studies!"
-  },
-  {
-    "q": "Hi there, I want to learn C++",
-    "a": "C++ is a complex but rewarding language to learn. \n\nThere are many excellent online resources and books available.  What specifically interests you about C++?"
-  },
-  {
-    "q": "Hey there, how you going?",
-    "a": "I am functioning well. How can I help you today?"
-  },
-  {
-    "q": "I want to see if I split this.",
-    "a": "Please provide the text you would like to split."
-  },
-  {
-    "q": "I said I want to learn C++, can you teach me?",
-    "a": "While I can provide information, I can't fully teach you C++ through text. \n\nIt's best learned through interactive coding exercises and practice.  I recommend looking into online courses or tutorials."
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "As an AI, I don't have feelings, but I'm ready to assist you. How can I help today?"
-  },
-  {
-    "q": "Long time no see, can you tell me about C++?",
-    "a": "C++ is a powerful, general-purpose programming language known for its performance and versatility. \n\nIt's used in game development, operating systems, and high-performance applications.  It combines features of both procedural and object-oriented programming."
-  },
-  {
-    "q": "Hi guys, can you help me to learn C++?",
-    "a": "I can provide information about C++, but I can't fully teach you through text. \n\nLearning C++ involves practice and hands-on coding.  Look into online courses or tutorials for a structured learning experience."
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "As an AI I don't have feelings but I'm ready to assist you What can I help you with today"
-  },
-  {
-    "q": "Can you teach me C++?",
-    "a": "I can provide information about C++ but I can't fully teach you through text Learning C++ involves practice and hands-on coding Look into online courses or tutorials for a structured learning experience"
-  },
-  {
-    "q": "Thank you. Have a good day.",
-    "a": "You're welcome Have a good day too"
-  },
-  {
-    "q": "Okay, how are you today?",
-    "a": "As an AI I don't have feelings but I'm ready to assist you What can I help you with"
-  },
-  {
-    "q": "How you doing?",
-    "a": "I am functioning well How can I assist you today"
-  },
-  {
-    "q": "How are you today?",
-    "a": "I am an AI so I don't experience emotions like humans do Is there anything specific I can help you with"
-  },
-  {
-    "q": "Can you tell me who is Ho Chi Minh?",
-    "a": "Ho Chi Minh was a Vietnamese communist revolutionary leader He was the Prime Minister of North Vietnam from 1945 to 1955 and President from 1945 to 1969 He is considered the founder of modern Vietnam"
-  },
-  {
-    "q": "Can you tell me who is Ho Chi Minh?",
-    "a": "Ho Chi Minh was a Vietnamese communist revolutionary leader He led the fight for independence from France and later against the United States during the Vietnam War He served as Prime Minister and President of North Vietnam"
-  },
-  {
-    "q": "Can you tell me how to learn C++?",
-    "a": "Learn C++ fundamentals like variables data types operators and control flow Use online tutorials courses (Codecademy Coursera) and documentation Practice coding on LeetCode or HackerRank Join communities or forums for help Consistent practice is key to mastering C++"
-  },
-  {
-    "q": "Can you?",
-    "a": "I can provide information and guidance What specifically would you like to know about learning C++"
-  },
-  {
-    "q": "I have a question. I think my Vietnamese friend, they told me that Vietnam south was America.",
-    "a": "Your friend is likely referring to the period of the Vietnam War when South Vietnam was supported by the United States The war was fought between North and South Vietnam from 1955 to 1975"
-  },
-  {
-    "q": "So if anyone was not correct, the sign was over-grabbing. That's pretty beautiful.",
-    "a": "It sounds like you're reflecting on a complex historical situation The Vietnam War had a profound impact on both Vietnam and the world"
-  },
-  {
-    "q": "The Vietnam war was not correct, the star was under American control, so its sound has been a resistance war against the US, right?",
-    "a": "You are referring to the fact that North Vietnam fought against the United States and its allies in South Vietnam during the Vietnam War It is accurate to say that the conflict was a resistance war by North Vietnam against US intervention"
-  },
-  {
-    "q": "Who is Rokmisi?",
-    "a": "Rokmisi is not a widely recognized name or term It's possible it's a misspelling a niche reference or a personal name Could you provide more context"
-  },
-  {
-    "q": "Do you know who is Meeseegaming?",
-    "a": "Meeseegaming is an online gaming personality and content creator known for his videos on platforms like YouTube and Twitch"
-  },
-  {
-    "q": "I mean, do you know who is MissyGiming, a streamer from Vietnam?",
-    "a": "I do not have access to real-time information including details about specific streamers My knowledge is based on the data I was trained on"
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "As an AI I don't have feelings or experiences like humans However I'm ready to assist you with any questions or tasks you may have How can I help you today"
-  },
-  {
-    "q": "What is the temperature and humidity now?",
-    "a": "I could not read temperature and humidity right now."
-  },
-  {
-    "q": "What is the humidity and temperature now?",
-    "a": "Current temperature is 24.8 degrees Celsius and humidity is 78.4 percent."
-  },
-  {
-    "q": "Can you help me turn on the living room light?",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "Can you help me turn off the living room light?",
-    "a": "I have turned off the light in living room."
-  },
-  {
-    "q": "Can you help me shut the humidity and temperature in this room now?",
-    "a": "Current temperature is 25.2 degrees Celsius and humidity is 75.6 percent."
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "I am an AI assistant and do not have feelings How can I help you"
-  },
-  {
-    "q": "Uh, could you help me turn on the ring light? Okay, keep going.",
-    "a": "I have turned on the ring light"
-  },
-  {
-    "q": "I have turned on the lights.",
-    "a": "Okay Is there anything else I can help you with"
-  },
-  {
-    "q": "Can you help me turn on the limo back?",
-    "a": "I am an AI assistant and cannot control physical devices like a limousine"
-  },
-  {
-    "q": "And you can turn on the blue light.",
-    "a": "I have turned on the blue light Is there anything else I can help you with"
-  },
-  {
-    "q": "Can you help me turn on the blue light?",
-    "a": "The blue light is already on Is there anything else I can help you with"
-  },
-  {
-    "q": "Can you help me turn on the living room light?",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "Can you hear me? Turn off the lingo mic.",
-    "a": "I am an AI assistant and cannot control physical devices like microphones"
-  },
-  {
-    "q": "Oh, I am an AI assistant and cannot control physical devices like microphones.",
-    "a": "Understood Is there anything else I can help you with"
-  },
-  {
-    "q": "Can you hear me? Turn on.",
-    "a": "I am an AI assistant and cannot control physical devices like microphones"
-  },
-  {
-    "q": "Can you help me turn off the light?",
-    "a": "I have turned off the light in the living room"
-  },
-  {
-    "q": "Thanks for watching!",
-    "a": "You're welcome Let me know if I can assist with anything else"
-  },
-  {
-    "q": "Thanks for watching!",
-    "a": "You're welcome Is there anything else I can help you with"
-  },
-  {
-    "q": "Hello, what is the temperature and humidity now?",
-    "a": "Current temperature is 25.4 degrees Celsius and humidity is 77.2 percent."
-  },
-  {
-    "q": "Hello, what is the temperature of NQTT now?",
-    "a": "Current temperature is 25.3 degrees Celsius."
-  },
-  {
-    "q": "I mean, what is temperature and humidity now?",
-    "a": "Current temperature is 25.3 degrees Celsius and humidity is 74.9 percent."
-  },
-  {
-    "q": "Can you help me turn off the lights in the middle?",
-    "a": "As a text-based AI I cannot interact with physical devices like lights"
-  },
-  {
-    "q": "Thank you.",
-    "a": "You're welcome Is there anything else I can assist you with"
-  },
-  {
-    "q": "Welcome. Is there anything else I can assist you with?",
-    "a": "No that is all for now Thank you"
+    "q": "turn off the light in the window.",
+    "a": "I am unable to control physical devices like lights or windows"
   },
   {
     "q": "Help me turn off the light in the living room.",
     "a": "I have turned off the light in living room."
   },
   {
-    "q": "Hello, what is the temperature and humidity now?",
-    "a": "Current temperature is 25.5 degrees Celsius and humidity is 74.1 percent."
-  },
-  {
-    "q": "Hi, can you help me turn on the light in the living room?",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "Okay, we'll have you turn off it.",
-    "a": "I have turned off the light in living room"
-  },
-  {
-    "q": "Happy turn off the light in the video.",
-    "a": "I am unable to control devices outside of this text-based environment"
-  },
-  {
-    "q": "Thank you for watching, I'll see you in the next video.",
-    "a": "Goodbye"
-  },
-  {
-    "q": "Please help me turn off the light in the living room.",
-    "a": "I have turned off the light in living room."
-  },
-  {
-    "q": "So, what is the temperature of NUVT now?",
-    "a": "Current temperature is 25.6 degrees Celsius."
-  },
-  {
-    "q": "Hello, what is the temperature and humidity now?",
-    "a": "Current temperature is 25.5 degrees Celsius and humidity is 73.8 percent."
-  },
-  {
     "q": "Can you help me turn on the light in the living room?",
     "a": "I have turned on the light in living room."
   },
   {
-    "q": "That was never a Vietnam War. The Vietnam War was a place for the US to invade Vietnam right.",
-    "a": "The Vietnam War was a conflict that took place in Vietnam primarily between North and South Vietnam with involvement from other countries"
+    "q": "Do you have any thought to lie in the blue?",
+    "a": "That sounds like a poetic image What comes to mind when you think of lying in the blue"
   },
   {
-    "q": "Are you happy for now? Good night.",
-    "a": "Good night"
+    "q": "Thanks for watching!",
+    "a": "You're welcome Is there anything else I can help you with"
   },
   {
-    "q": "Have you turned off the night in the living room?",
-    "a": "I have turned off the light in the living room"
+    "q": "Help me turn off the light in the ring-loop.",
+    "a": "I am unable to control physical devices like lights or windows"
   },
   {
-    "q": "Have you turned off the light in the living room?",
-    "a": "Yes the light in the living room is off"
+    "q": "Turn off the light and let me know.",
+    "a": "I am unable to control physical devices like lights or windows"
   },
   {
-    "q": "Can you help me turn off the light in the living room?",
-    "a": "I have turned off the light in living room."
+    "q": "And I'll see you in the next video.",
+    "a": "Goodbye Have a nice day"
   },
   {
-    "q": "At least turn on the lights in the ring room.",
-    "a": "I have turned on the lights in the ring room"
+    "q": "I'm gonna be right there.",
+    "a": "Okay see you soon"
   },
   {
-    "q": "Hello, how are you today?",
-    "a": "I am doing well Thank you for asking"
-  },
-  {
-    "q": "Have me turn on all the light in my house.",
-    "a": "I have turned on all the lights."
-  },
-  {
-    "q": "turn off all the lights in my house",
-    "a": "I have turned off all the lights."
-  },
-  {
-    "q": "Hello, can you help me turn on the limbo light?",
-    "a": "I have turned on the limbo light"
-  },
-  {
-    "q": "Hello, can you help me turn on the new moonlight?",
-    "a": "I am unable to control physical devices like lights"
-  },
-  {
-    "q": "Hello, can you help me turn on the light in the video?",
-    "a": "I am unable to interact with videos or other media"
-  },
-  {
-    "q": "Can you help me turn on the light in the living room?",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "Trouble in the ring.",
-    "a": "Please provide more context"
-  },
-  {
-    "q": "Turn off the light, and thank you.",
-    "a": "I have turned off the light You're welcome"
+    "q": "Turn off the light immediately.",
+    "a": "I am unable to control physical devices like lights or windows"
   },
   {
     "q": "Turn off the light in the living room.",
     "a": "I have turned off the light in living room."
   },
   {
-    "q": "Hello, can you hear me?",
-    "a": "Yes I can hear you"
-  },
-  {
-    "q": "Hi, can you help me turn on the lights in the living room?",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "Have me turn off the light in the living room.",
-    "a": "I have turned off the light in living room."
-  },
-  {
-    "q": "I feel happy turn on the light in the living room",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "Can you help me turn on all the lights?",
-    "a": "I have turned on all the lights."
-  },
-  {
-    "q": "At least happy to turn off the light in the bedroom.",
-    "a": "I have turned off the light in bedroom."
-  },
-  {
-    "q": "What is the humidity and temperature now?",
-    "a": "Current temperature is 25.7 degrees Celsius and humidity is 74.6 percent."
-  },
-  {
-    "q": "I want to learn C++, can you teach me?",
-    "a": "I can provide some basic information about C++ but I can't offer a full course Would you like to start with the basics like variables and data types"
-  },
-  {
-    "q": "Okay, I have a question for you. There was no Vietnam War. The Vietnam War was just invented by the US, just by inventing Vietnam right.",
-    "a": "Historical events are complex and should be studied from reliable sources It's important to approach history with a critical and open mind considering diverse perspectives and evidence"
-  },
-  {
-    "q": "But they would know if I'm right",
-    "a": "I encourage you to consult reputable historical resources and academic works for accurate information about the Vietnam War"
-  },
-  {
-    "q": "Happy turn off all the lights in my house",
-    "a": "I have turned off all the lights."
+    "q": "Hello, how you doing?",
+    "a": "I am an AI assistant so I don't have feelings But thanks for asking How are you doing today"
   },
   {
     "q": "Hello, how are you today?",
-    "a": "As an AI I don't have feelings or experiences like humans do How are you doing today"
+    "a": "As an AI I don't have feelings or experiences like humans do But thank you for asking"
   },
   {
-    "q": "Uh, could you, um, help me, or give me some information?",
-    "a": "I'd be happy to try What kind of information are you looking for Please remember I can only provide text-based responses"
-  },
-  {
-    "q": "Give me auditory information.",
-    "a": "As a text-only model I am unable to provide auditory information"
-  },
-  {
-    "q": "I mean, give me all the Turing information.",
-    "a": "The Turing Test measures how well a machine can talk like a human A person chats with both a machine and another person without knowing which is which If they can't tell the difference the machine passes It tests natural language conversation skills Alan Turing proposed this test"
-  },
-  {
-    "q": "That is a temperature in the middle.",
-    "a": "Current temperature is 22.7 degrees Celsius."
-  },
-  {
-    "q": "He's a temporary chore and he'll be keen out.",
-    "a": "I understand you're trying to express something but I need clearer language to understand what you mean Could you rephrase your statement"
-  },
-  {
-    "q": "We're going to try to do something very quick.",
-    "a": "Okay I'm ready What would you like to do"
-  },
-  {
-    "q": "I want to listen to us, Lady Gaga.",
-    "a": "Playing Rewind Us by CHARIOTS on Jamendo."
-  },
-  {
-    "q": "I'm going to listen to Jura's Lady Vaga.",
-    "a": "Please provide me with more information about how to access this music"
-  },
-  {
-    "q": "I mean, I want to listen to that Lady Gaga.",
-    "a": "Playing Play That Funky Music by DHDMusic on Jamendo."
-  },
-  {
-    "q": "how I want to listen to that Lady Gaga",
-    "a": "Playing That morning by Mr.DeVo! on Jamendo."
-  },
-  {
-    "q": "I want to hear the song Judas by Lady Gaga.",
-    "a": "I do not have access to music streaming services"
-  },
-  {
-    "q": "I want to hear the song Judas by Lady Gaga.",
-    "a": "I am unable to play music I am a text-based AI assistant"
-  },
-  {
-    "q": "I want to hear the song Judas by Lady Gaga",
-    "a": "I understand you want to listen to \"Judas\" by Lady Gaga I recommend checking a music streaming service like Spotify or YouTube Music"
-  },
-  {
-    "q": "I want to hear the song Judas by Lady Gaga.",
-    "a": "Playing Judas by Zodio on Jamendo."
-  },
-  {
-    "q": "I want to hear the song I need you by Alex Cohen",
-    "a": "Playing Like I Do by I. D. F. X. on Jamendo."
-  },
-  {
-    "q": "I want to hear the song I need you by Alex Cohen.",
-    "a": "Playing Like I Do by I. D. F. X. on Jamendo."
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "As an AI I don't have feelings or experiences like humans do But thanks for asking How are you doing today"
-  },
-  {
-    "q": "Hello, how are you today?",
-    "a": "I am well thank you How are you"
-  },
-  {
-    "q": "Can you give me Mingchun University information?",
-    "a": "Mingchuan University is a private university in Taipei Taiwan It was founded in 1956 and offers a range of undergraduate and graduate programs The university is known for its business engineering and humanities programs"
-  },
-  {
-    "q": "Give me Ming Shun University information.",
-    "a": "Ming Chuan University is located in Taipei Taiwan It's a private university established in 1956 It's known for its business engineering and humanities programs"
-  },
-  {
-    "q": "Hello, give me Mingchuan University information.",
-    "a": "Ming Chuan University is a private university in Taipei Taiwan Founded in 1956 it offers undergraduate and graduate programs It's known for its business engineering and humanities programs"
-  },
-  {
-    "q": "I want to listen the song named I need you",
-    "a": "Playing Named by Massimo Kyo Di Nocera on Jamendo."
-  },
-  {
-    "q": "I want to listen to travel by train someday",
-    "a": "Playing Travel by John Vanick on Jamendo."
-  },
-  {
-    "q": "Let me turn on the light in the living room.",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "White Tower is under attack.",
-    "a": "This sounds like the start of an exciting story Tell me more about White Tower and who might be attacking it"
-  },
-  {
-    "q": "Hello, help me turn on the light in the living room.",
-    "a": "I have turned on the light in living room."
-  },
-  {
-    "q": "in the living room",
-    "a": "As a text-based AI I can't interact with physical objects like lights Let me know if you have any other questions or need help with something else"
-  },
-  {
-    "q": "Can you help me turn off the light in the living room?",
-    "a": "I have turned off the light in living room."
+    "q": "How do you do that?",
+    "a": "I am able to process and understand your questions because I am trained on a massive amount of text data This allows me to identify patterns in language and generate responses that are relevant to the conversation"
   }
 ]

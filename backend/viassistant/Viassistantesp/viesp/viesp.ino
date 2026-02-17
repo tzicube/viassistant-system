@@ -1,7 +1,7 @@
-
-// OK - ESP32S3 NO-PSRAM: MIC + OLED + WS (Mic Record + Text Only)
+// OK - ESP32S3 NO-PSRAM: MIC + OLED(U8g2 Face Anim + Speaking) + WS (Mic Record + NO Text)
 // Server sends audio directly to Bluetooth speaker
-// ESP32: Mic recording + Text via WebSocket only
+// ESP32: Mic recording + OLED face only (no text mode)
+// Flow: Idle -> (BTN start) ListeningActive -> (BTN stop) Thinking -> (tts_start/BIN) Speaking -> (tts_end) Idle
 
 #include <WiFi.h>
 
@@ -14,8 +14,8 @@
 #include "esp_system.h"
 
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <U8g2lib.h>
+#include <math.h>
 
 // =========================
 // WIFI
@@ -41,7 +41,7 @@ const int I2S_DIN  = 34;
 // BUTTON
 const int BTN_PIN = 14;        // Record/Stop toggle
 
-// OLED (SSD1306)
+// OLED I2C
 const int OLED_SDA = 21;
 const int OLED_SCL = 22;
 
@@ -51,11 +51,9 @@ const int OLED_SCL = 22;
 const int SAMPLE_RATE = 16000; // MIC input rate + server PCM rate
 
 // =========================
-// OLED
+// OLED (U8g2)
 // =========================
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
 // =========================
 // STATE
@@ -68,47 +66,31 @@ int lastBtnState = HIGH;
 WebSocketsClient ws;
 bool wsConnected = false;
 
-String lastAiText = "";
-
 // OLED mode control
-enum OledMode { OLED_FACE, OLED_TEXT, OLED_THINKING, OLED_SERVER_DOWN };
-OledMode oledMode = OLED_FACE;
-unsigned long textModeUntilMs = 0;
-const unsigned long TEXT_SHOW_MS = 8000;
+enum OledMode { OLED_FACE, OLED_THINKING, OLED_SPEAKING, OLED_SERVER_DOWN };
+OledMode oledMode = OLED_SERVER_DOWN;
+
+// Speaking control (server-driven)
+bool speaking = false;
+unsigned long speakUntilMs = 0;
+const unsigned long SPEAK_TIMEOUT_MS = 12000; // fallback safety
+
+// After stop: server will send {"type":"result","audio_stream":true...} then tts_start + BIN stream + tts_end
+bool awaitingAudio = false;
 
 // =========================
-// FACE
+// ANIMATION TICK (for blink + mouth cadence)
 // =========================
-int leftEyeX  = 45;
-int rightEyeX = 80;
-int eyeY      = 16;
-int eyeWidth  = 25;
-int eyeHeight = 30;
-
-int targetOffsetX = 0;
-int targetOffsetY = 0;
-int moveSpeed = 5;
-
-int gazeDir = 0;
-unsigned long moveTime = 0;
-
-int blinkState = 0;                // 0 open, 1 closed
-int blinkDelayMs = 4000;
-unsigned long lastBlinkTime = 0;
+int tick = 0;
+unsigned long lastUpdate = 0; // tick timebase
+const unsigned long TICK_MS = 200;
 
 unsigned long lastFaceFrameMs = 0;
 const unsigned long FACE_FRAME_MS = 30;
 
-int GAZE_SCALE = 2;
-
-const int8_t GAZE_8[8][2] = {
-  {  0, -7 }, {  5, -5 }, {  9,  0 }, {  5,  5 },
-  {  0,  7 }, { -5,  5 }, { -9,  0 }, { -5, -5 }
-};
-
-// =========================
+// =================================================
 // UTIL
-// =========================
+// =================================================
 const char* resetReasonToString(esp_reset_reason_t reason) {
   switch (reason) {
     case ESP_RST_UNKNOWN: return "unknown";
@@ -134,7 +116,7 @@ String payloadToString(const uint8_t* payload, size_t length) {
   return out;
 }
 
-// JSON string extractor (simple)
+// JSON string extractor (simple; works for quoted strings)
 bool extractJsonString(const String& body, const String& key, String& out) {
   String needle = "\"" + key + "\"";
   int idx = body.indexOf(needle);
@@ -164,156 +146,231 @@ bool extractJsonString(const String& body, const String& key, String& out) {
   return true;
 }
 
-// =========================
-// OLED DRAW
-// =========================
-void drawEye(int x, int y, int w, int h) {
-  display.fillRoundRect(x, y, w, h, 5, SSD1306_WHITE);
+static inline String toLowerCopy(String s) {
+  s.toLowerCase();
+  return s;
 }
 
-void drawListeningAnimation(unsigned long now, int offsetX, int offsetY) {
+// Keyword matcher for server events
+bool isSpeakStartTag(const String& tagLower) {
+  return tagLower.indexOf("speak_start") >= 0 ||
+         tagLower.indexOf("tts_start")   >= 0 ||
+         tagLower.indexOf("audio_start") >= 0 ||
+         tagLower.indexOf("play_start")  >= 0 ||
+         tagLower.indexOf("speaking")    >= 0;
+}
+
+bool isSpeakEndTag(const String& tagLower) {
+  return tagLower.indexOf("speak_end") >= 0 ||
+         tagLower.indexOf("tts_end")   >= 0 ||
+         tagLower.indexOf("audio_end") >= 0 ||
+         tagLower.indexOf("play_end")  >= 0 ||
+         tagLower.indexOf("done")      >= 0 ||
+         tagLower.indexOf("final")     >= 0 ||
+         tagLower.indexOf("end")       >= 0;
+}
+
+// =================================================
+// TICK UPDATE
+// =================================================
+void updateTick(unsigned long now) {
+  if (now - lastUpdate >= TICK_MS) {
+    lastUpdate = now;
+    tick++;
+  }
+}
+
+// =================================================
+// BLINK LOGIC
+// =================================================
+bool isBlinking() {
+  int blinkCycle = tick % 20;
+  return (blinkCycle == 0 || blinkCycle == 1);
+}
+
+// =================================================
+// EYES – NORMAL
+// =================================================
+void drawEyesSmooth(int offsetX, int offsetY) {
+  u8g2.drawRBox(22 + offsetX, 16 + offsetY, 28, 32, 13);
+  u8g2.drawRBox(78 + offsetX, 16 + offsetY, 28, 32, 13);
+}
+
+void drawEyesBlink(int offsetX, int offsetY) {
+  u8g2.drawRBox(24 + offsetX, 33 + offsetY, 24, 4, 2);
+  u8g2.drawRBox(80 + offsetX, 33 + offsetY, 24, 4, 2);
+}
+
+// =================================================
+// LISTEN BARS (3 cột sóng 2 bên mắt)
+// =================================================
+void drawListeningBars(unsigned long now, int offsetX, int offsetY) {
+  const int leftEyeX  = 22 + offsetX;
+  const int rightEyeX = 78 + offsetX;
+  const int eyeY      = 16 + offsetY;
+  const int eyeW      = 28;
+  const int eyeH      = 32;
+
   int phase = (int)((now / 120UL) % 6UL);
   int level = (phase <= 3) ? phase : (6 - phase);
 
-  int midY = eyeY + offsetY + eyeHeight / 2;
-  int leftBaseX = leftEyeX + offsetX - 8;
-  int rightBaseX = rightEyeX + offsetX + eyeWidth + 6;
+  int midY = eyeY + (eyeH / 2);
+  int leftBaseX  = leftEyeX - 8;
+  int rightBaseX = rightEyeX + eyeW + 6;
 
   for (int i = 0; i < 3; i++) {
     int amp = (i <= level) ? (i + 1) * 4 : 2;
-    int hh = 4 + amp;
-    int yy = midY - (hh / 2);
-    display.fillRect(leftBaseX - (i * 4), yy, 2, hh, SSD1306_WHITE);
-    display.fillRect(rightBaseX + (i * 4), yy, 2, hh, SSD1306_WHITE);
+    int hh  = 4 + amp;
+    int yy  = midY - (hh / 2);
+
+    u8g2.drawBox(leftBaseX - (i * 4),  yy, 2, hh);
+    u8g2.drawBox(rightBaseX + (i * 4), yy, 2, hh);
   }
 }
 
-void advanceGazeDirection() {
-  gazeDir = (gazeDir + 1) % 8;
-  targetOffsetX = (int)GAZE_8[gazeDir][0] * GAZE_SCALE;
-  targetOffsetY = (int)GAZE_8[gazeDir][1] * GAZE_SCALE;
-}
-
-void updateBlink(unsigned long now) {
-  if (blinkState == 0 && (now - lastBlinkTime > (unsigned long)blinkDelayMs)) {
-    blinkState = 1;
-    lastBlinkTime = now;
-  } else if (blinkState == 1 && (now - lastBlinkTime > 150UL)) {
-    blinkState = 0;
-    lastBlinkTime = now;
-  }
-}
-
-void drawEyesWithOffset(int offsetX, int offsetY) {
-  if (blinkState == 0) {
-    drawEye(leftEyeX + offsetX,  eyeY + offsetY, eyeWidth, eyeHeight);
-    drawEye(rightEyeX + offsetX, eyeY + offsetY, eyeWidth, eyeHeight);
-  } else {
-    display.fillRect(leftEyeX + offsetX,  eyeY + offsetY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
-    display.fillRect(rightEyeX + offsetX, eyeY + offsetY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
-  }
-}
-
-void faceUpdateAndDraw(unsigned long now) {
-  updateBlink(now);
-
-  if (blinkState == 0 && (now - moveTime > (unsigned long)random(900, 1600))) {
-    advanceGazeDirection();
-    moveTime = now;
-  }
-
-  static int offsetX = 0;
-  static int offsetY = 0;
-  offsetX += (targetOffsetX - offsetX) / moveSpeed;
-  offsetY += (targetOffsetY - offsetY) / moveSpeed;
-
-  display.clearDisplay();
-  drawEyesWithOffset(offsetX, offsetY);
-
-  if (recording) drawListeningAnimation(now, offsetX, offsetY);
-
-  display.display();
-}
-
-void drawThinkingEffect(unsigned long now) {
-  int dots = (int)((now / 280UL) % 4UL);
+// =================================================
+// MOUTH – LISTENING (smile)
+// =================================================
+void drawMouthSmileSmooth() {
   int cx = 64;
-  int y = 54;
+  int cy = 47;
+  int radius = 12;
 
-  for (int i = 0; i < dots; i++) display.fillCircle(cx - 6 + i * 6, y, 1, SSD1306_WHITE);
+  for (int layer = 0; layer < 5; layer++) {
+    int prevX = 0;
+    int prevY = 0;
+    bool firstPoint = true;
 
-  int s = (int)((now / 120UL) % 8UL);
-  int mx = 64;
-  int my = 46;
-  const int8_t RING[8][2] = {
-    { 0, -6 }, { 4, -4 }, { 6, 0 }, { 4, 4 },
-    { 0,  6 }, { -4, 4 }, { -6, 0 }, { -4, -4 }
-  };
+    for (int angle = 20; angle <= 160; angle += 2) {
+      float rad = angle * 3.1416f / 180.0f;
+      int x = cx + (int)(radius * cos(rad));
+      int y = cy + (int)(radius * sin(rad)) + layer;
 
-  for (int i = 0; i < 8; i++) {
-    int px = mx + RING[i][0];
-    int py = my + RING[i][1];
-    if (i == s) display.fillCircle(px, py, 1, SSD1306_WHITE);
-    else       display.drawPixel(px, py, SSD1306_WHITE);
-  }
-}
-
-void thinkingUpdateAndDraw(unsigned long now) {
-  updateBlink(now);
-
-  if (blinkState == 0 && (now - moveTime > (unsigned long)random(450, 900))) {
-    advanceGazeDirection();
-    moveTime = now;
-  }
-
-  static int offsetX = 0;
-  static int offsetY = 0;
-  offsetX += (targetOffsetX - offsetX) / moveSpeed;
-  offsetY += (targetOffsetY - offsetY) / moveSpeed;
-
-  display.clearDisplay();
-  drawEyesWithOffset(offsetX, offsetY);
-  drawThinkingEffect(now);
-  display.display();
-}
-
-void oledShowTextWrapped(const String& text) {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println("Vi:");
-
-  const int maxCharsPerLine = 21;
-  int start = 0;
-  int printedLines = 1;
-
-  while (start < (int)text.length() && printedLines < 8) {
-    int end = min((int)text.length(), start + maxCharsPerLine);
-    if (end < (int)text.length()) {
-      int lastSpace = text.lastIndexOf(' ', end);
-      if (lastSpace > start) end = lastSpace;
+      if (!firstPoint) u8g2.drawLine(prevX, prevY, x, y);
+      prevX = x;
+      prevY = y;
+      firstPoint = false;
     }
-    String line = text.substring(start, end);
-    line.trim();
-    display.println(line);
-    printedLines++;
-    start = end + 1;
   }
-  display.display();
 }
 
-void setListeningUi() { oledMode = OLED_FACE; textModeUntilMs = 0; lastFaceFrameMs = 0; }
-void setThinkingUi()  { oledMode = OLED_THINKING; textModeUntilMs = 0; lastFaceFrameMs = 0; }
+// =================================================
+// MOUTH – THINKING (flat)
+// =================================================
+void drawMouthFlat() {
+  u8g2.drawRBox(52, 54, 24, 6, 3);
+}
+
+// =================================================
+// MOUTH – SPEAKING
+// =================================================
+void drawMouthTalkSmooth(bool open) {
+  if (open) u8g2.drawRBox(48, 50, 32, 14, 5);
+  else      u8g2.drawRBox(50, 54, 28, 6, 3);
+}
+
+// =================================================
+// UI DRAW: FACE idle
+// =================================================
+void drawListening() {
+  int eyeMove = (tick % 8 < 4) ? -2 : 2;
+
+  u8g2.clearBuffer();
+  if (isBlinking()) drawEyesBlink(eyeMove, 0);
+  else              drawEyesSmooth(eyeMove, 0);
+
+  drawMouthSmileSmooth();
+  u8g2.sendBuffer();
+}
+
+// =================================================
+// UI DRAW: RECORDING (LISTENING_ACTIVE)
+// =================================================
+void drawListeningActive(unsigned long now) {
+  u8g2.clearBuffer();
+
+  if (isBlinking()) drawEyesBlink(0, 0);
+  else              drawEyesSmooth(0, 0);
+
+  // mouth small
+  u8g2.drawRBox(56, 54, 16, 5, 2);
+
+  // bars
+  drawListeningBars(now, 0, 0);
+
+  u8g2.sendBuffer();
+}
+
+// =================================================
+// UI DRAW: THINKING
+// =================================================
+void drawThinking() {
+  u8g2.clearBuffer();
+
+  if (isBlinking()) drawEyesBlink(0, -4);
+  else              drawEyesSmooth(0, -4);
+
+  drawMouthFlat();
+
+  int d = tick % 3;
+  if (d >= 0) u8g2.drawDisc(54, 10, 2);
+  if (d >= 1) u8g2.drawDisc(64, 8, 2);
+  if (d >= 2) u8g2.drawDisc(74, 10, 2);
+
+  u8g2.sendBuffer();
+}
+
+// =================================================
+// UI DRAW: SPEAKING
+// =================================================
+void drawSpeaking() {
+  bool open = (tick % 2) == 0;
+  int eyeMove = (tick % 8 < 4) ? -2 : 2;
+
+  u8g2.clearBuffer();
+
+  if (isBlinking()) drawEyesBlink(eyeMove, 0);
+  else              drawEyesSmooth(eyeMove, 0);
+
+  drawMouthTalkSmooth(open);
+  u8g2.sendBuffer();
+}
+
+// =================================================
+// UI DRAW: SERVER DOWN
+// =================================================
+void drawServerDown() {
+  u8g2.clearBuffer();
+  u8g2.drawRBox(22, 32, 28, 6, 3);
+  u8g2.drawRBox(78, 32, 28, 6, 3);
+  u8g2.sendBuffer();
+}
+
+// =================================================
+// MODE SETTERS
+// =================================================
+void setListeningUi() { oledMode = OLED_FACE;     lastFaceFrameMs = 0; }
+void setThinkingUi()  { oledMode = OLED_THINKING; lastFaceFrameMs = 0; }
+
+void setSpeakingUi(unsigned long now) {
+  speaking = true;
+  speakUntilMs = now + SPEAK_TIMEOUT_MS;
+  oledMode = OLED_SPEAKING;
+  lastFaceFrameMs = 0;
+}
+
+void stopSpeakingUi() {
+  speaking = false;
+  oledMode = OLED_FACE;
+  lastFaceFrameMs = 0;
+}
 
 void setServerUnavailableUi() {
   oledMode = OLED_SERVER_DOWN;
-  textModeUntilMs = 0;
-
-  display.clearDisplay();
-  display.fillRect(leftEyeX,  eyeY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
-  display.fillRect(rightEyeX, eyeY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
-  display.display();
+  speaking = false;
+  awaitingAudio = false;
+  lastFaceFrameMs = 0;
+  drawServerDown();
 }
 
 // =========================
@@ -353,25 +410,61 @@ void setupI2SRx() {
 // WS handling
 // =========================
 void handleWsText(const String& body) {
-  String aiText;
+  unsigned long now = millis();
 
-  if (oledMode == OLED_THINKING) {
-    oledMode = OLED_FACE;
-    lastFaceFrameMs = 0;
+  // If recording, ignore speak signals (listening bars have priority)
+  if (recording) return;
+
+  // Get tag from multiple keys
+  String tag, tmp;
+  if (extractJsonString(body, "type", tmp)) tag = tmp;
+  else if (extractJsonString(body, "event", tmp)) tag = tmp;
+  else if (extractJsonString(body, "status", tmp)) tag = tmp;
+  else if (extractJsonString(body, "action", tmp)) tag = tmp;
+  else if (extractJsonString(body, "state", tmp)) tag = tmp;
+
+  String tagLower = toLowerCopy(tag);
+
+  // 1) result: server says it will stream audio
+  if (tagLower == "result") {
+    awaitingAudio = true;
+    // keep THINKING (already set after stop)
+    return;
   }
 
-  if (!extractJsonString(body, "ai_text", aiText)) {
-    if (!extractJsonString(body, "text", aiText)) {
-      extractJsonString(body, "answer", aiText);
+  // 2) tts_start: start speaking
+  if (tagLower == "tts_start" || isSpeakStartTag(tagLower)) {
+    awaitingAudio = false;
+    setSpeakingUi(now);
+    return;
+  }
+
+  // 3) tts_end: stop speaking
+  if (tagLower == "tts_end" || isSpeakEndTag(tagLower)) {
+    awaitingAudio = false;
+    stopSpeakingUi();
+    return;
+  }
+
+  // 4) fallback audio_b64: if we're still thinking, allow speaking briefly (optional)
+  String audioB64;
+  if (extractJsonString(body, "audio_b64", audioB64) && audioB64.length() > 0) {
+    // If server sends fallback after stream, this may come after tts_end; harmless.
+    if (oledMode == OLED_THINKING || awaitingAudio) {
+      awaitingAudio = false;
+      setSpeakingUi(now);
+    } else if (oledMode == OLED_SPEAKING) {
+      speakUntilMs = now + SPEAK_TIMEOUT_MS;
     }
+    return;
   }
 
-  if (aiText.length() > 0) {
-    lastAiText = aiText;
-    oledMode = OLED_TEXT;
-    textModeUntilMs = millis() + TEXT_SHOW_MS;
-    oledShowTextWrapped(lastAiText);
+  // 5) Any other TEXT while speaking: extend timeout so it doesn't drop early
+  if (oledMode == OLED_SPEAKING) {
+    speakUntilMs = now + SPEAK_TIMEOUT_MS;
   }
+
+  (void)body;
 }
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
@@ -379,16 +472,17 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     case WStype_CONNECTED:
       wsConnected = true;
       Serial.printf("[ws] connected -> ws://%s:%d%s\n", WS_HOST, WS_PORT, WS_PATH);
-
       oledMode = OLED_FACE;
-      textModeUntilMs = 0;
+      speaking = false;
+      awaitingAudio = false;
       lastFaceFrameMs = 0;
       break;
 
     case WStype_DISCONNECTED:
       wsConnected = false;
       recording = false;
-
+      speaking = false;
+      awaitingAudio = false;
       if (payload && length) {
         String reason = payloadToString(payload, length);
         Serial.printf("[ws] disconnected: %s\n", reason.c_str());
@@ -404,10 +498,31 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
     }
 
+    case WStype_BIN: {
+      // Server streams PCM bytes_data here.
+      // If we are not recording, treat BIN as "speaking in progress"
+      if (!recording) {
+        unsigned long now = millis();
+
+        // If we were thinking/awaiting audio, switch to speaking when first BIN arrives
+        if (oledMode == OLED_THINKING || awaitingAudio) {
+          awaitingAudio = false;
+          setSpeakingUi(now);
+        }
+
+        // Extend speak timeout while audio is streaming
+        if (oledMode == OLED_SPEAKING) {
+          speakUntilMs = now + SPEAK_TIMEOUT_MS;
+        }
+      }
+      break;
+    }
+
     case WStype_ERROR:
       wsConnected = false;
       recording = false;
-
+      speaking = false;
+      awaitingAudio = false;
       if (payload && length) {
         String err = payloadToString(payload, length);
         Serial.printf("[ws] error: %s\n", err.c_str());
@@ -438,11 +553,12 @@ void setup() {
 
   pinMode(BTN_PIN, INPUT_PULLUP);
 
+  // OLED I2C
   Wire.begin(OLED_SDA, OLED_SCL);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  randomSeed(esp_random());
+  u8g2.begin();
 
-  oledMode = OLED_FACE;
+  // Start with server-down face until connected
+  setServerUnavailableUi();
 
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
@@ -464,13 +580,21 @@ void setup() {
 
   Serial.printf("[ws] connecting -> ws://%s:%d%s free_heap=%u\n",
                 WS_HOST, WS_PORT, WS_PATH, (unsigned)ESP.getFreeHeap());
-
-  setServerUnavailableUi();
 }
 
 void loop() {
   unsigned long now = millis();
   ws.loop();
+
+  // tick for animations
+  updateTick(now);
+
+  // Speaking timeout fallback
+  if (oledMode == OLED_SPEAKING && speaking) {
+    if ((long)(now - speakUntilMs) >= 0) {
+      stopSpeakingUi();
+    }
+  }
 
   if (wsConnected) {
     // Button - Record Toggle
@@ -480,9 +604,15 @@ void loop() {
       recording = !recording;
 
       if (recording) {
-        setListeningUi();
+        // recording: listening bars have priority, cancel speaking
+        speaking = false;
+        awaitingAudio = false;
+        oledMode = OLED_FACE;
+        lastFaceFrameMs = 0;
         ws.sendTXT("{\"type\":\"start\",\"language\":\"en\",\"client\":\"esp32\"}");
       } else {
+        // stop -> thinking, and wait for audio result/tts
+        awaitingAudio = true;
         setThinkingUi();
         ws.sendTXT("{\"type\":\"stop\"}");
       }
@@ -515,30 +645,27 @@ void loop() {
 
   } else {
     recording = false;
+    speaking = false;
+    awaitingAudio = false;
     if (oledMode != OLED_SERVER_DOWN) setServerUnavailableUi();
     lastBtnState = digitalRead(BTN_PIN);
   }
 
-  // TEXT timeout -> return to FACE
-  if (wsConnected && oledMode == OLED_TEXT) {
-    if ((long)(now - textModeUntilMs) >= 0) {
-      oledMode = OLED_FACE;
-      lastFaceFrameMs = 0;
-    }
-  }
-
-  // OLED animations
-  if (wsConnected && oledMode == OLED_FACE) {
+  // OLED render loop
+  if (wsConnected) {
     if (now - lastFaceFrameMs >= FACE_FRAME_MS) {
       lastFaceFrameMs = now;
-      faceUpdateAndDraw(now);
-    }
-  }
 
-  if (wsConnected && oledMode == OLED_THINKING) {
-    if (now - lastFaceFrameMs >= FACE_FRAME_MS) {
-      lastFaceFrameMs = now;
-      thinkingUpdateAndDraw(now);
+      if (oledMode == OLED_THINKING) {
+        drawThinking();
+      } else if (oledMode == OLED_SPEAKING) {
+        drawSpeaking();
+      } else if (oledMode == OLED_FACE) {
+        if (recording) drawListeningActive(now);
+        else           drawListening();
+      } else {
+        drawServerDown();
+      }
     }
   }
 

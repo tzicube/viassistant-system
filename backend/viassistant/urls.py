@@ -1,7 +1,5 @@
-from django.urls import path
+"""Unused HTTP routes for viassistant.
 
-from . import views
-
-urlpatterns = [
-    path("viassistant/voice", views.voice, name="viassistant_voice"),
-]
+Kept as empty list to avoid accidental inclusion while keeping module import-safe.
+"""
+urlpatterns = []
