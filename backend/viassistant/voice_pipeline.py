@@ -20,7 +20,7 @@ class STTConfig:
     compute_type: str = "float16"
     language: str | None = "en"
     vad_filter: bool = False
-    beam_size: int = 15
+    beam_size: int = 30
 
 
 @dataclass

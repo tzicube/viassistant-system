@@ -162,5 +162,65 @@
   {
     "q": "Give me information about what's in your mind.",
     "a": "As an AI I don't have thoughts or feelings My \"mind\" is a system of algorithms that process text I was trained on a large dataset which allows me to answer questions and converse I don't experience things like humans do"
+  },
+  {
+    "q": "Hello, hi there.",
+    "a": "Hello How can I help you today"
+  },
+  {
+    "q": "Uh, can you help me turn off the light in the living room?",
+    "a": "I have turned off the light in living room."
+  },
+  {
+    "q": "I want to learn C++, can you teach me?",
+    "a": "I can give you C++ information but not teach a full course Learning takes practice and hands-on work Try online tutorials on sites like Codecademy or Khan Academy Books are good too look for ones with clear examples Practice by writing simple programs and building up Ask me about"
+  },
+  {
+    "q": "of what is the structure of the President's single-tenths.",
+    "a": "The U S President is Head of State and Head of Government They represent the nation and lead the executive branch The President also commands the armed forces and proposes laws to Congress They can sign or veto bills The President's power is balanced by checks and balances from o"
+  },
+  {
+    "q": "What is the structure of the prison? Seymour Henson.",
+    "a": "Please provide more context What kind of prison are you asking about Is it a specific prison named \"Seymour Henson\" I need more information to give you a helpful answer"
+  },
+  {
+    "q": "Structure of the present simple tense.",
+    "a": "The present simple tense shows facts habits and routines Its structure is: Subject + base verb + (s/es) For example: He walks to work every day They play soccer on weekends Let me know if you have other grammar questions"
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am doing well thank you for asking How can I assist you today"
+  },
+  {
+    "q": "Thanks for watching!",
+    "a": "You're welcome Is there anything else I can help you with"
+  },
+  {
+    "q": "Thanks for watching!",
+    "a": "You're welcome Is there anything else I can do for you"
+  },
+  {
+    "q": "Hello, can you help me turn on the light in the window?",
+    "a": "I have turned on the light in the window"
+  },
+  {
+    "q": "Can you help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "But can you help me turn off the light in the middle?",
+    "a": "I have turned off the light in the middle"
+  },
+  {
+    "q": "Anyin, can you help me turn off the light in the living room?",
+    "a": "I have turned off the light in living room."
+  },
+  {
+    "q": "Will you help me turn on all the lights now?",
+    "a": "I have turned on all the lights."
+  },
+  {
+    "q": "Please help me turn off for all the light in my house.",
+    "a": "I have turned off all the lights."
   }
 ]

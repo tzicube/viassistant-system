@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 
 OLLAMA_URL = "http://127.0.0.1:11434"
-OLLAMA_MODEL = "gemma2:9b" #  qwen2.5:14b    gemma2:27b
+OLLAMA_MODEL = "gemma3:12b" #  qwen2.5:14b    gemma2:27b
  # đổi theo model anh đang dùng
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
