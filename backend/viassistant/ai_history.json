@@ -130,5 +130,37 @@
   {
     "q": "How do you do that?",
     "a": "I am able to process and understand your questions because I am trained on a massive amount of text data This allows me to identify patterns in language and generate responses that are relevant to the conversation"
+  },
+  {
+    "q": "Hello, how you doing?",
+    "a": "As an AI I don't have feelings But thanks for asking How are you doing today"
+  },
+  {
+    "q": "Have a good day.",
+    "a": "You too Have a great day"
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am an AI so I don't have feelings but thank you for asking How are you doing today"
+  },
+  {
+    "q": "How do I do?",
+    "a": "That's a good question It sounds like you're asking about your well-being How are you doing today"
+  },
+  {
+    "q": "Hello, how are you doing?",
+    "a": "As an AI I don't have feelings but thank you for asking How are you doing today"
+  },
+  {
+    "q": "Turn on the light and believe it or not.",
+    "a": "I am unable to control physical devices like lights"
+  },
+  {
+    "q": "Turn on the light in the living room.",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "Give me information about what's in your mind.",
+    "a": "As an AI I don't have thoughts or feelings My \"mind\" is a system of algorithms that process text I was trained on a large dataset which allows me to answer questions and converse I don't experience things like humans do"
   }
 ]

@@ -437,38 +437,17 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                 tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, esp_tts_full) if esp_tts_full else b""
                 tts_bytes = _add_leading_silence(_normalize_wav_header(tts_raw), TTS_LEAD_SIL_MS)
 
-            payload = dict(result_payload)
-            payload.update(
-                {
-                    "audio_stream": True,
-                    "audio_format": "pcm_s16le",
-                    "sample_rate": 16000,
-                    "channels": 1,
-                }
-            )
-            await self.send(text_data=json.dumps(payload))
-
-            if tts_bytes:
-                # Phát thẳng ra loa cục bộ (winsound/ffplay). Không dùng Bluetooth.
-                try:
-                    await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
-                except Exception as e:
-                    logger.warning("[ws] local playback failed: %s", e)
-
-                await self._send_tts_pcm_chunks(tts_bytes)
-
-                # Fallback for ESP clients that only handle base64
-                audio_b64 = base64.b64encode(tts_bytes).decode("ascii") if tts_bytes else ""
-                await self.send(
-                    text_data=json.dumps(
-                        {
-                            **result_payload,
-                            "audio_b64": audio_b64,
-                            "audio_mime": "audio/wav",
-                            "audio_stream_dup": True,
-                        }
-                    )
-                )
+            # ESP chỉ cần tín hiệu UI, không nhận audio/text
+            await self.send(text_data=json.dumps({"type": "speak_start"}))
+            try:
+                if tts_bytes:
+                    try:
+                        # Phát cục bộ (winsound/ffplay), ESP chỉ hiển thị UI.
+                        await asyncio.to_thread(_play_wav_bytes_local, tts_bytes)
+                    except Exception as e:
+                        logger.warning("[ws] local playback failed: %s", e)
+            finally:
+                await self.send(text_data=json.dumps({"type": "speak_end"}))
         else:
             if music_audio_bytes:
                 tts_bytes = _add_leading_silence(_normalize_wav_header(music_audio_bytes), TTS_LEAD_SIL_MS)
