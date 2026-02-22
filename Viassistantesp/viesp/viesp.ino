@@ -1,7 +1,3 @@
-// OK - ESP32S3 NO-PSRAM: MIC + OLED(U8g2 Face Anim + Speaking) + WS (Mic Record + NO Text)
-// Server sends audio directly to Bluetooth speaker
-// ESP32: Mic recording + OLED face only (no text mode)
-// Flow: Idle -> (BTN start) ListeningActive -> (BTN stop) Thinking -> (tts_start/BIN) Speaking -> (tts_end) Idle
 
 #include <WiFi.h>
 
