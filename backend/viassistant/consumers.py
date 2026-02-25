@@ -432,8 +432,7 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                         len(esp_tts_text),
                     )
 
-                filler = os.getenv("VI_TTS_FILLER")
-                esp_tts_full = f"{filler} {esp_tts_text}".strip() if esp_tts_text else ""
+                esp_tts_full = esp_tts_text or ""
                 tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, esp_tts_full) if esp_tts_full else b""
                 tts_bytes = _add_leading_silence(_normalize_wav_header(tts_raw), TTS_LEAD_SIL_MS)
 
@@ -453,8 +452,7 @@ class ViAssistantConsumer(AsyncWebsocketConsumer):
                 tts_bytes = _add_leading_silence(_normalize_wav_header(music_audio_bytes), TTS_LEAD_SIL_MS)
                 logger.warning("[ws] music audio bytes=%d", len(tts_bytes or b""))
             else:
-                filler = os.getenv("VI_TTS_FILLER")
-                tts_full = f"{filler} {ai_text}".strip() if ai_text else ""
+                tts_full = (ai_text or "").strip()
                 tts_raw = await asyncio.to_thread(tts_text_to_wav_bytes, tts_full)
                 tts_bytes = _add_leading_silence(_normalize_wav_header(tts_raw), TTS_LEAD_SIL_MS)
                 logger.warning("[ws] tts done bytes=%d", len(tts_bytes or b""))
