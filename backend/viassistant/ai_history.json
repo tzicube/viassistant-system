@@ -222,5 +222,29 @@
   {
     "q": "Please help me turn off for all the light in my house.",
     "a": "I have turned off all the lights."
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am doing well thank you How may I assist you today"
+  },
+  {
+    "q": "Could you please help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "Do you know anything about what I'm doing?",
+    "a": "I am designed to respond to your requests regarding lights I don't know what else you are doing"
+  },
+  {
+    "q": "Do you know anything about Alan Turing?",
+    "a": "Alan Turing was a brilliant British mathematician and computer scientist He helped crack the Enigma code during WWII He's considered a pioneer of artificial intelligence Sadly he faced persecution for his sexuality"
+  },
+  {
+    "q": "Hello",
+    "a": "Hello"
+  },
+  {
+    "q": "Hello? Do you know anything about attitude?",
+    "a": "Attitude is a way of thinking or feeling about something It can influence behavior and how we approach situations Positive attitudes are generally helpful"
   }
 ]
