@@ -246,5 +246,37 @@
   {
     "q": "Hello? Do you know anything about attitude?",
     "a": "Attitude is a way of thinking or feeling about something It can influence behavior and how we approach situations Positive attitudes are generally helpful"
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am doing well thank you How may I assist you today"
+  },
+  {
+    "q": "Do you have anything about financially?",
+    "a": "Financial matters involve managing money and assets This includes budgeting saving investing and understanding debt Responsible financial planning is important for long-term security"
+  },
+  {
+    "q": "Do you have any information about Alan Turing?",
+    "a": "Alan Turing was a pioneering British mathematician and computer scientist He helped break the Enigma code in WWII He's considered a father of AI Sadly he faced persecution due to his sexuality"
+  },
+  {
+    "q": "Can you help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "I don't know about Ho Chi Minh.",
+    "a": "Ho Chi Minh was a Vietnamese revolutionary leader He played a key role in Vietnam's independence movement He was a significant figure in Vietnamese history"
+  },
+  {
+    "q": "Um, do you know who is Hojin?",
+    "a": "I do not have information about someone named Hojin My knowledge base is limited"
+  },
+  {
+    "q": "I mean, poor Jimmy.",
+    "a": "I understand you are referring to Jimmy I am sorry to hear he is struggling"
+  },
+  {
+    "q": "Can you help me turn on all the light in the house?",
+    "a": "I have turned on all the lights."
   }
 ]
