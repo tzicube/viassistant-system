@@ -35,7 +35,7 @@ _PUNCT_RE = re.compile(r"[.!?。！？]")
 # TUNING
 # =========================
 MIN_COMMIT_CHARS = 8
-PAUSE_SEC = 0.7
+PAUSE_SEC = 1.0
 TICK = 0.25
 
 
@@ -255,11 +255,12 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         logger.warning("[line1] start stt")
 
         cfg = WhisperConfig(
-            model_size="small",
+            model_size="medium",          # 8GB VRAM friendly; bump to large-v3 if GPU allows
             device="cuda",
-            compute_type="float16",
+            compute_type="float16",       # float16 works broadly; int8_float16 failed on some GPUs
             language=self.mem.stt_language,
-            vad_filter=False,
+            vad_filter=False,             # onnxruntime missing in env; disable VAD to avoid crash
+            beam_size=5,
         )
         streamer = RealtimeWhisperStreamer(cfg)
 

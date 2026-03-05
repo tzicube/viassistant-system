@@ -1,4 +1,0 @@
-Với các số 3 và 4, do đó chúng ta có thể lấy được rằng khi kết nối, nó sẽ bằng 1. Với 1, 2, 3, 4, đúng không? Vậy bổ sung cho A là gì?
-Vì nó nói "công chính thị" là 1, 2, 3, 5, 6 đúng không? Vậy bổ sung cho A là 5, 6, vì bạn có thể thấy nó nói "3, 5, 6" bằng "công chính thị" là 1, 2, 5, 6.
-OK, vậy A1 và kết nối sẽ làm bổ sung, B thì tuổi là 1, 2, 3, 4? Vậy để làm phổ biến là 5, 6.
-4 để làm bổ sung là bổ sung, bổ sung cho A và B làm kết hợp sẽ bằng bổ sung, do đó chúng ta có thể thông qua ví dụ này nhận thấy A kết nối...

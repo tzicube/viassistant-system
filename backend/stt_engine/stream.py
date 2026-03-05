@@ -27,8 +27,8 @@ class RealtimeWhisperStreamer:
         self.fmt = fmt or AudioFormat()
         self.buf = bytearray()
         self.last_ts = 0.0
-        self.min_interval = 0.5  # seconds
-        self.max_sec = 1800.0
+        self.min_interval = 0.8  # seconds; wait a bit longer to gather speech for better STT
+        self.max_sec = 300.0     # cap buffer to ~5 minutes to avoid drift and RAM blow-up
 
     def push(self, pcm16: bytes):
         self.buf.extend(pcm16)
