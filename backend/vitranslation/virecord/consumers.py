@@ -8,8 +8,7 @@ import logging
 import re
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from stt_engine.config import WhisperConfig
-from stt_engine.stream import RealtimeWhisperStreamer
+from stt_engine.stream import make_realtime_streamer
 
 from vitranslation.ai_engine.prompts import VALID_LANGS
 from vitranslation.ai_engine.translator import (
@@ -34,9 +33,11 @@ _PUNCT_RE = re.compile(r"[.!?。！？]")
 # =========================
 # TUNING
 # =========================
-MIN_COMMIT_CHARS = 8
-PAUSE_SEC = 1.0
-TICK = 0.25
+# Increase thresholds to batch more text before committing/translation
+MIN_COMMIT_CHARS = 20
+PAUSE_SEC = 0.3
+TICK = 0.15
+QUICK_COMMIT_CHARS = 80  # commit even without punctuation after this many chars
 
 
 def _safe_lang(x: str) -> str:
@@ -223,14 +224,6 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
         if not segment or len(segment) < MIN_COMMIT_CHARS:
             return
 
-        last_seg = self.mem.session_src_segments[-1] if self.mem.session_src_segments else ""
-        if last_seg:
-            segment2 = _strip_overlap(last_seg, segment)
-            segment2 = _norm_space(segment2).strip()
-            if not segment2 or _too_similar(segment2, last_seg):
-                return
-            segment = segment2
-
         h = hash(segment)
         if h == getattr(self.mem, "_last_commit_hash", 0):
             return
@@ -253,20 +246,11 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
     # =========================================================
     async def _line1_stt(self):
         logger.warning("[line1] start stt")
-
-        cfg = WhisperConfig(
-            model_size="medium",          # 8GB VRAM friendly; bump to large-v3 if GPU allows
-            device="cuda",
-            compute_type="float16",       # float16 works broadly; int8_float16 failed on some GPUs
-            language=self.mem.stt_language,
-            vad_filter=False,             # onnxruntime missing in env; disable VAD to avoid crash
-            beam_size=5,
-        )
-        streamer = RealtimeWhisperStreamer(cfg)
+        streamer = make_realtime_streamer(language=self.mem.stt_language)
 
         while not self.mem.stopped:
             try:
-                pcm = await asyncio.wait_for(self.audio_q.get(), timeout=0.25)
+                pcm = await asyncio.wait_for(self.audio_q.get(), timeout=0.05)
                 streamer.push(pcm)
             except asyncio.TimeoutError:
                 pass
@@ -284,6 +268,7 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
                 self.mem._stt_committed_len = cur
                 draft_raw = full_raw[cur:]
 
+                # emit live draft for UI
                 await self.send_json({"type": "stt.delta", "text": draft_raw, "delta": ""})
 
                 cut_idx, commit_raw, remain_raw = _split_commit_by_punct(draft_raw)
@@ -291,6 +276,12 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
                     self.mem._stt_committed_len = cur + cut_idx
                     await self._commit_source_segment(commit_raw)
                     await self.send_json({"type": "stt.delta", "text": remain_raw, "delta": ""})
+                else:
+                    # Fallback: commit long drafts even without punctuation
+                    if len(_norm_space(draft_raw)) >= QUICK_COMMIT_CHARS:
+                        self.mem._stt_committed_len = len(full_raw)
+                        await self._commit_source_segment(draft_raw)
+                        await self.send_json({"type": "stt.delta", "text": "", "delta": ""})
 
             if self.mem.stopping:
                 break
@@ -334,7 +325,7 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
 
         while not self.mem.stopped:
             try:
-                seg = await asyncio.wait_for(self.commit_q.get(), timeout=0.25)
+                seg = await asyncio.wait_for(self.commit_q.get(), timeout=0.05)
             except asyncio.TimeoutError:
                 if self.mem.stopping:
                     break
@@ -366,15 +357,6 @@ class ViRecordConsumer(AsyncJsonWebsocketConsumer):
 
             translated = _norm_space(seg_cum).strip()
             if translated:
-                last_tgt = self.mem.session_tgt_segments[-1] if self.mem.session_tgt_segments else ""
-                if last_tgt:
-                    translated2 = _strip_overlap(last_tgt, translated)
-                    translated2 = _norm_space(translated2).strip()
-                    if not translated2 or _too_similar(translated2, last_tgt):
-                        self.mem._translating = False
-                        continue
-                    translated = translated2
-
                 self.mem.session_tgt_segments.append(translated)
                 await self.send_json({"type": "translation.commit", "text": translated})
 
