@@ -278,5 +278,17 @@
   {
     "q": "Can you help me turn on all the light in the house?",
     "a": "I have turned on all the lights."
+  },
+  {
+    "q": "Hello, how are you today?",
+    "a": "I am functioning normally How may I help you"
+  },
+  {
+    "q": "Do you have people on the line?",
+    "a": "I am running as a language model I do not have people on a line"
+  },
+  {
+    "q": "Can you help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
   }
 ]
