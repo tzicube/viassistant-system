@@ -2,6 +2,6 @@
 import os
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma2:9b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:12b")
 OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "720"))
 vad_filter: bool = False
