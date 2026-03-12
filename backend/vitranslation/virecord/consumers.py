@@ -34,7 +34,7 @@ _PUNCT_RE = re.compile(r"[.!?。！？]")
 # TUNING
 # =========================
 # Increase thresholds to batch more text before committing/translation
-MIN_COMMIT_CHARS = 20
+MIN_COMMIT_CHARS = 80
 PAUSE_SEC = 0.3
 TICK = 0.15
 QUICK_COMMIT_CHARS = 80  # commit even without punctuation after this many chars

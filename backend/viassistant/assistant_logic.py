@@ -6,7 +6,7 @@ import unicodedata
 
 import requests
 from django.conf import settings
-esplight = "http://192.168.1.102"
+esplight = "http://172.20.10.3"
 _HTTP = requests.Session()
 # Avoid environment proxy settings interfering with local ESP/LAN requests.
 _HTTP.trust_env = False

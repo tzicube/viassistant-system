@@ -8,4 +8,4 @@ class WhisperConfig:
     compute_type: str = "float16"    # float16/int8_float16/int8
     language: str | None = None      # en/vi/zh or None
     vad_filter: bool = False
-    beam_size: int = 1
+    beam_size: int = 2.5

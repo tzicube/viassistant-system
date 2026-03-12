@@ -34,7 +34,7 @@ class RealtimeWhisperStreamer:
         # shorter interval => faster commit/translation start
         self.min_interval = 0.4  # seconds
         self.max_sec = 300.0     # cap buffer to ~5 minutes to avoid drift and RAM blow-up
-        self.trim_sec = 20.0     # keep only last N seconds when transcribing
+        self.trim_sec = 300.0     # keep only last N seconds when transcribing
         self.input_gain = max(1.0, float(input_gain or STREAM_INPUT_GAIN))
         self._target_peak = STREAM_TARGET_PEAK
 

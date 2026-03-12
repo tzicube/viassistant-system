@@ -5,8 +5,8 @@
 // =========================
 // CONFIG WIFI (anh sửa 2 dòng này)
 // =========================
-const char* WIFI_SSID = "ZiCube";
-const char* WIFI_PASS = "Duy31122005@";
+const char* WIFI_SSID = "admin";
+const char* WIFI_PASS = "88888888";
 
 // HTTP server port 80
 WebServer server(80);

@@ -278,5 +278,65 @@
   {
     "q": "Can you help me turn on all the light in the house?",
     "a": "I have turned on all the lights."
+  },
+  {
+    "q": "Hello, can you tell me to turn on auto light in my house?",
+    "a": "I have activated the auto light feature in your house"
+  },
+  {
+    "q": "Thank you very much.",
+    "a": "You are welcome I am glad I could help"
+  },
+  {
+    "q": "Or the light in my house",
+    "a": "I have turned on the lights in your house"
+  },
+  {
+    "q": "Hello, can you help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "Please help me turn off the living room lights.",
+    "a": "I have turned off the light in living room."
+  },
+  {
+    "q": "Please hurry, turn on the leading lights.",
+    "a": "I have turned on the lights"
+  },
+  {
+    "q": "Please help me turn on the human eyes.",
+    "a": "I am programmed to assist with automated tasks not biological functions I cannot control human eyes"
+  },
+  {
+    "q": "Hello, can you help me put on the light in the living room?",
+    "a": "I have turned on the light in the living room"
+  },
+  {
+    "q": "Can you help me turn on all the light in my house?",
+    "a": "I have turned on all the lights."
+  },
+  {
+    "q": "Can you help me turn on all the lights in my house?",
+    "a": "I have turned on all the lights."
+  },
+  {
+    "q": "Turn off all the lights in the house.",
+    "a": "I have turned off all the lights."
+  },
+  {
+    "q": "Can you help me? Can you show me the temperature and humidity now?",
+    "a": "Current temperature is 20.8 degrees Celsius and humidity is 55.6 percent."
+  },
+  {
+    "q": "Hello, can you help me turn on the light in the living room?",
+    "a": "I have turned on the light in living room."
+  },
+  {
+    "q": "Hello, do you know who is Alan Tewin?",
+    "a": "Alan Turing was a British mathematician and computer scientist He is considered a pioneer in computer science"
+  },
+  {
+    "q": "Can you give me the temperature and humidity now?",
+    "a": "Current temperature is 21.3 degrees Celsius and humidity is 56.4 percent."
   }
 ]

@@ -16,13 +16,13 @@
 // =========================
 // WIFI
 // =========================
-const char* WIFI_SSID = "ZiCube";
-const char* WIFI_PASS = "Duy31122005@";
+const char* WIFI_SSID = "admin";
+const char* WIFI_PASS = "88888888";
 
 // =========================
 // SERVER (WebSocket)
 // =========================
-const char* WS_HOST = "192.168.1.112";
+const char* WS_HOST = "172.20.10.6";
 const int   WS_PORT = 8000;
 const char* WS_PATH = "/ws/viassistant/";
 
